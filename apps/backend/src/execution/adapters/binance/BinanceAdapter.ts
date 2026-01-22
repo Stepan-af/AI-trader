@@ -238,19 +238,22 @@ export class BinanceAdapter {
   private startListenKeyRefresh(): void {
     this.stopListenKeyRefresh();
 
-    this.listenKeyRefreshInterval = setInterval(() => {
-      void (async (): Promise<void> => {
-        try {
-          if (this.currentListenKey) {
-            await this.restClient.refreshListenKey(this.currentListenKey);
+    this.listenKeyRefreshInterval = setInterval(
+      () => {
+        void (async (): Promise<void> => {
+          try {
+            if (this.currentListenKey) {
+              await this.restClient.refreshListenKey(this.currentListenKey);
+            }
+          } catch (error) {
+            if (this.onErrorHandler) {
+              this.onErrorHandler(error as Error);
+            }
           }
-        } catch (error) {
-          if (this.onErrorHandler) {
-            this.onErrorHandler(error as Error);
-          }
-        }
-      })();
-    }, 30 * 60 * 1000); // 30 minutes
+        })();
+      },
+      30 * 60 * 1000
+    ); // 30 minutes
   }
 
   /**

@@ -31,11 +31,13 @@ describe('CircuitBreaker', () => {
 
   it('should track failures', async () => {
     for (let i = 0; i < 3; i++) {
-      await circuitBreaker.execute(async () => {
-        throw new Error('Test failure');
-      }).catch(() => {
-        // Expected
-      });
+      await circuitBreaker
+        .execute(async () => {
+          throw new Error('Test failure');
+        })
+        .catch(() => {
+          // Expected
+        });
     }
 
     expect(circuitBreaker.getFailures()).toBe(3);
@@ -51,11 +53,13 @@ describe('CircuitBreaker', () => {
   it('should reset correctly', async () => {
     // Generate some failures
     for (let i = 0; i < 2; i++) {
-      await circuitBreaker.execute(async () => {
-        throw new Error('Test failure');
-      }).catch(() => {
-        // Expected
-      });
+      await circuitBreaker
+        .execute(async () => {
+          throw new Error('Test failure');
+        })
+        .catch(() => {
+          // Expected
+        });
     }
 
     circuitBreaker.reset();

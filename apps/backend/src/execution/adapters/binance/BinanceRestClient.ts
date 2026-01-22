@@ -34,7 +34,10 @@ export class BinanceRestClient {
    * Create HMAC SHA256 signature for authenticated requests
    */
   private createSignature(queryString: string): string {
-    return crypto.createHmac('sha256', this.credentials.apiSecret).update(queryString).digest('hex');
+    return crypto
+      .createHmac('sha256', this.credentials.apiSecret)
+      .update(queryString)
+      .digest('hex');
   }
 
   /**
