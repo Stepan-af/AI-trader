@@ -1,0 +1,12 @@
+{
+  "migrations-dir": "infra/migrations",
+  "migrations-table": "pgmigrations",
+  "schema": "public",
+  "direction": "up",
+  "count": 1,
+  "check-order": true,
+  "create-schema": false,
+  "create-migrations-schema": false,
+  "single-transaction": true,
+  "reject-unauthorized": false
+}
