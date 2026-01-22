@@ -205,6 +205,28 @@ export class OrderRepository {
   }
 
   /**
+   * Find non-final orders for reconciliation
+   * Returns orders in SUBMITTED, OPEN, PARTIALLY_FILLED, CANCELING states
+   * from the last 24 hours (older orders assumed final)
+   */
+  async findNonFinalOrders(hoursBack = 24): Promise<Order[]> {
+    const query = `
+      SELECT
+        id, user_id, strategy_id, symbol, side, type, quantity, price,
+        status, filled_quantity, avg_fill_price, exchange_order_id,
+        created_at, updated_at, queued_at
+      FROM execution.orders
+      WHERE status IN ('SUBMITTED', 'OPEN', 'PARTIALLY_FILLED', 'CANCELING')
+        AND created_at > NOW() - INTERVAL '${hoursBack} hours'
+      ORDER BY created_at ASC
+    `;
+
+    const result = await this.pool.query(query);
+
+    return result.rows.map((row) => this.mapRowToOrder(row as OrderRow));
+  }
+
+  /**
    * Update order with fill data
    * Used when processing fills to update filled_quantity, avg_fill_price, and status
    */

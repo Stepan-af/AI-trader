@@ -160,6 +160,13 @@ export class BinanceAdapter {
   }
 
   /**
+   * Get order trades (fills) for reconciliation
+   */
+  async getOrderTrades(symbol: string, orderId: number): Promise<import('./types').BinanceTrade[]> {
+    return this.executeWithProtection(() => this.restClient.getOrderTrades(symbol, orderId));
+  }
+
+  /**
    * Get connection health status
    */
   getHealth(): ConnectionHealth {

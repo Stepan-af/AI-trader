@@ -98,6 +98,20 @@ export interface BinanceServerTimeResponse {
   serverTime: number;
 }
 
+export interface BinanceTrade {
+  symbol: string;
+  id: number; // Trade ID
+  orderId: number;
+  price: string;
+  qty: string;
+  commission: string;
+  commissionAsset: string;
+  time: number;
+  isBuyer: boolean;
+  isMaker: boolean;
+  isBestMatch: boolean;
+}
+
 export type BinanceOrderStatus =
   | 'NEW'
   | 'PARTIALLY_FILLED'

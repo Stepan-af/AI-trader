@@ -12,6 +12,7 @@ import type {
   BinanceOrderRequest,
   BinanceOrderResponse,
   BinanceServerTimeResponse,
+  BinanceTrade,
 } from './types';
 
 export interface BinanceRestClientConfig {
@@ -204,5 +205,23 @@ export class BinanceRestClient {
     const response = await this.request<BinanceServerTimeResponse>('GET', endpoint, {}, false);
 
     return response.serverTime;
+  }
+
+  /**
+   * Get account trades for a specific order
+   * Used for reconciliation to detect missed fills
+   */
+  async getOrderTrades(symbol: string, orderId: number): Promise<BinanceTrade[]> {
+    const endpoint = '/api/v3/myTrades';
+
+    return this.request<BinanceTrade[]>(
+      'GET',
+      endpoint,
+      {
+        symbol,
+        orderId,
+      },
+      true
+    );
   }
 }
