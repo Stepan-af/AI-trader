@@ -3,7 +3,7 @@
  * BullMQ-based job queues with priority support
  */
 
-import { Queue, QueueOptions, Worker, WorkerOptions, Job } from 'bullmq';
+import { Job, Queue, QueueOptions, Worker, WorkerOptions } from 'bullmq';
 
 /**
  * Queue Names

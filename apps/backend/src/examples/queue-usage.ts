@@ -5,7 +5,7 @@
 
 /* eslint-disable no-console, @typescript-eslint/no-floating-promises, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/require-await, @typescript-eslint/no-unused-vars */
 
-import { getQueue, createWorker, QueueName, type JobProcessor } from '@ai-trader/shared';
+import { createWorker, getQueue, QueueName, type JobProcessor } from '@ai-trader/shared';
 
 // ============================================================================
 // Example 1: Adding Jobs to Queue
@@ -57,7 +57,7 @@ async function exampleCreateWorker(): Promise<void> {
 // Example 3: Queue Health Monitoring
 // ============================================================================
 
-import { getQueueHealth, getAllQueuesHealth } from '@ai-trader/shared';
+import { getAllQueuesHealth, getQueueHealth } from '@ai-trader/shared';
 
 async function exampleMonitorQueues(): Promise<void> {
   // Get health for specific queue

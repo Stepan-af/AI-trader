@@ -3,5 +3,5 @@
  * Redis connections and job queues
  */
 
-export * from './redis';
 export * from './queues';
+export * from './redis';
