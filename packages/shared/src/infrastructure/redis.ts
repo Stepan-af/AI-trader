@@ -78,3 +78,9 @@ export async function closeRedis(): Promise<void> {
     redisClient = null;
   }
 }
+
+/**
+ * Export Redis type for type safety in consumers
+ */
+export type { Redis };
+export type RedisClient = Redis;
