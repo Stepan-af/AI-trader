@@ -138,7 +138,9 @@ export class ReconciliationService {
    * Run full reconciliation
    * Called periodically or on demand (e.g., crash recovery)
    */
-  async reconcile(trigger: 'PERIODIC' | 'CRASH_RECOVERY' | 'MANUAL'): Promise<ReconciliationResult> {
+  async reconcile(
+    trigger: 'PERIODIC' | 'CRASH_RECOVERY' | 'MANUAL'
+  ): Promise<ReconciliationResult> {
     if (this.isReconciling) {
       throw new Error('Reconciliation already in progress');
     }
@@ -205,10 +207,16 @@ export class ReconciliationService {
     }
 
     // Query exchange for current order state
-    const exchangeOrder = await this.binanceAdapter.queryOrder(order.symbol, parseInt(order.exchangeOrderId, 10));
+    const exchangeOrder = await this.binanceAdapter.queryOrder(
+      order.symbol,
+      parseInt(order.exchangeOrderId, 10)
+    );
 
     // Get all fills from exchange
-    const exchangeTrades = await this.binanceAdapter.getOrderTrades(order.symbol, parseInt(order.exchangeOrderId, 10));
+    const exchangeTrades = await this.binanceAdapter.getOrderTrades(
+      order.symbol,
+      parseInt(order.exchangeOrderId, 10)
+    );
 
     // Reconcile state and fills
     return this.reconcileWithExchangeState(order, exchangeOrder, exchangeTrades);
@@ -237,8 +245,10 @@ export class ReconciliationService {
     if (orderAge > fiveMinutes) {
       // Mark as REJECTED (submission lost)
       // eslint-disable-next-line no-console
-      console.warn(`Order ${order.id} in ${order.status} for > 5 minutes without exchange ID, marking as REJECTED`);
-      
+      console.warn(
+        `Order ${order.id} in ${order.status} for > 5 minutes without exchange ID, marking as REJECTED`
+      );
+
       void this.orderService.transitionOrder({
         orderId: order.id,
         newStatus: 'REJECTED',
@@ -250,7 +260,9 @@ export class ReconciliationService {
     } else if (order.status === 'SUBMITTED') {
       // Still within grace period, log and wait
       // eslint-disable-next-line no-console
-      console.log(`Order ${order.id} in SUBMITTED for ${Math.round(orderAge / 1000)}s, waiting for exchange confirmation`);
+      console.log(
+        `Order ${order.id} in SUBMITTED for ${Math.round(orderAge / 1000)}s, waiting for exchange confirmation`
+      );
     }
 
     return action;
@@ -309,8 +321,10 @@ export class ReconciliationService {
     // Rule 4: State mismatch (non-final states)
     if (order.status !== mappedStatus) {
       // eslint-disable-next-line no-console
-      console.log(`Order ${order.id} state mismatch: DB=${order.status}, Exchange=${exchangeStatus}, updating to ${mappedStatus}`);
-      
+      console.log(
+        `Order ${order.id} state mismatch: DB=${order.status}, Exchange=${exchangeStatus}, updating to ${mappedStatus}`
+      );
+
       await this.orderService.transitionOrder({
         orderId: order.id,
         newStatus: mappedStatus,
@@ -323,8 +337,6 @@ export class ReconciliationService {
 
     return action;
   }
-
-
 
   /**
    * Handle exchange final states (FILLED, CANCELED, REJECTED, EXPIRED)
@@ -340,7 +352,7 @@ export class ReconciliationService {
     if (order.status !== mappedStatus) {
       // eslint-disable-next-line no-console
       console.log(`Order ${order.id} reached final state on exchange: ${mappedStatus}`);
-      
+
       await this.orderService.transitionOrder({
         orderId: order.id,
         newStatus: mappedStatus,
@@ -354,7 +366,7 @@ export class ReconciliationService {
     // Emit missing fills (if any)
     if (exchangeTrades.length > 0) {
       const fillsAdded = await this.addMissingFills(order, exchangeTrades);
-      
+
       if (fillsAdded > 0) {
         action.action = 'FILLS_ADDED';
         action.fillsAddedCount = fillsAdded;

@@ -371,7 +371,9 @@ describe('ReconciliationService', () => {
       const promise1 = service.reconcile('PERIODIC');
 
       // Try to start second reconciliation
-      await expect(service.reconcile('PERIODIC')).rejects.toThrow('Reconciliation already in progress');
+      await expect(service.reconcile('PERIODIC')).rejects.toThrow(
+        'Reconciliation already in progress'
+      );
 
       // Wait for first to complete
       await promise1;
