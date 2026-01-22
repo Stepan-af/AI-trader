@@ -35,7 +35,10 @@ export class PortfolioEventOutboxRepository {
    * Create portfolio event in outbox
    * Will be processed by Portfolio Service worker
    */
-  async create(params: CreatePortfolioEventParams, client?: PoolClient): Promise<PortfolioEventOutbox> {
+  async create(
+    params: CreatePortfolioEventParams,
+    client?: PoolClient
+  ): Promise<PortfolioEventOutbox> {
     const db = client || this.pool;
 
     const query = `
@@ -43,7 +46,7 @@ export class PortfolioEventOutboxRepository {
         event_type, user_id, symbol, order_id, fill_id, data
       )
       VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING 
+      RETURNING
         id, event_type, user_id, symbol, order_id, fill_id, data, created_at, processed_at
     `;
 
@@ -64,7 +67,7 @@ export class PortfolioEventOutboxRepository {
    */
   async findUnprocessed(limit = 100): Promise<PortfolioEventOutbox[]> {
     const query = `
-      SELECT 
+      SELECT
         id, event_type, user_id, symbol, order_id, fill_id, data, created_at, processed_at
       FROM execution.portfolio_events_outbox
       WHERE processed_at IS NULL
@@ -74,7 +77,9 @@ export class PortfolioEventOutboxRepository {
 
     const result = await this.pool.query(query, [limit]);
 
-    return result.rows.map((row) => this.mapRowToPortfolioEventOutbox(row as PortfolioEventOutboxRow));
+    return result.rows.map((row) =>
+      this.mapRowToPortfolioEventOutbox(row as PortfolioEventOutboxRow)
+    );
   }
 
   /**

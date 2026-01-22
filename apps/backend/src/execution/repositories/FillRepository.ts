@@ -46,7 +46,7 @@ export class FillRepository {
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       ON CONFLICT (exchange_fill_id) DO NOTHING
-      RETURNING 
+      RETURNING
         id, order_id, exchange_fill_id, price, quantity, fee, fee_asset, timestamp, source
     `;
 
@@ -74,7 +74,7 @@ export class FillRepository {
    */
   async findByOrderId(orderId: string): Promise<Fill[]> {
     const query = `
-      SELECT 
+      SELECT
         id, order_id, exchange_fill_id, price, quantity, fee, fee_asset, timestamp, source
       FROM execution.fills
       WHERE order_id = $1
@@ -91,7 +91,7 @@ export class FillRepository {
    */
   async findByExchangeFillId(exchangeFillId: string): Promise<Fill | null> {
     const query = `
-      SELECT 
+      SELECT
         id, order_id, exchange_fill_id, price, quantity, fee, fee_asset, timestamp, source
       FROM execution.fills
       WHERE exchange_fill_id = $1

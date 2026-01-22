@@ -213,7 +213,7 @@ export class OrderRepository {
 
     const query = `
       UPDATE execution.orders
-      SET 
+      SET
         status = $2,
         filled_quantity = $3,
         avg_fill_price = $4,
@@ -225,7 +225,12 @@ export class OrderRepository {
         created_at, updated_at, queued_at
     `;
 
-    const result = await db.query(query, [params.id, params.status, params.filledQuantity, params.avgFillPrice]);
+    const result = await db.query(query, [
+      params.id,
+      params.status,
+      params.filledQuantity,
+      params.avgFillPrice,
+    ]);
 
     if (result.rows.length === 0) {
       throw new Error(`Order not found: ${params.id}`);

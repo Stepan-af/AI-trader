@@ -5,11 +5,11 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
-import { Pool } from 'pg';
 import { randomUUID } from 'node:crypto';
+import { Pool } from 'pg';
 import type { CreateFillParams } from '../repositories/FillRepository';
-import { OrderService } from '../services/OrderService';
 import type { CreateOrderRequest } from '../services/OrderService';
+import { OrderService } from '../services/OrderService';
 
 describe('Fill Processing Integration', () => {
   let pool: Pool;

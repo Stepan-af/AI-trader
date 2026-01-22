@@ -258,10 +258,12 @@ export class OrderService {
       const newAvgFillPrice =
         order.filledQuantity === 0
           ? params.price
-          : ((order.avgFillPrice ?? 0) * order.filledQuantity + params.price * params.quantity) / newFilledQuantity;
+          : ((order.avgFillPrice ?? 0) * order.filledQuantity + params.price * params.quantity) /
+            newFilledQuantity;
 
       // Determine new status
-      const newStatus: OrderStatus = newFilledQuantity >= order.quantity ? 'FILLED' : 'PARTIALLY_FILLED';
+      const newStatus: OrderStatus =
+        newFilledQuantity >= order.quantity ? 'FILLED' : 'PARTIALLY_FILLED';
 
       // 2. Get next sequence number for event
       const sequenceNumber = await this.eventRepo.getNextSequenceNumber(params.orderId, client);
