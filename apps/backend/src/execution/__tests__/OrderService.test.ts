@@ -5,11 +5,11 @@
 
 /* eslint-disable @typescript-eslint/unbound-method */
 
-import type { Pool, PoolClient } from 'pg';
 import type { Order } from '@ai-trader/shared';
-import { OrderService } from '../services/OrderService';
-import { OrderRepository } from '../repositories/OrderRepository';
+import type { Pool, PoolClient } from 'pg';
 import { OrderEventRepository } from '../repositories/OrderEventRepository';
+import { OrderRepository } from '../repositories/OrderRepository';
+import { OrderService } from '../services/OrderService';
 
 // Mock repositories
 jest.mock('../repositories/OrderRepository');

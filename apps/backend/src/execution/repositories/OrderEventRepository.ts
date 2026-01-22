@@ -4,8 +4,8 @@
  * Ensures complete audit trail per ARCHITECTURE.md
  */
 
-import type { Pool, PoolClient } from 'pg';
 import type { OrderEvent, OrderEventType } from '@ai-trader/shared';
+import type { Pool, PoolClient } from 'pg';
 
 interface OrderEventRow {
   id: string;

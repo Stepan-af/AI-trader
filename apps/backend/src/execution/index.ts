@@ -3,11 +3,11 @@
  * Public API for order state machine
  */
 
-export { OrderService } from './services/OrderService';
-export { OrderRepository } from './repositories/OrderRepository';
+export { closeDatabasePool, createDatabasePool, testDatabaseConnection } from './database';
 export { OrderEventRepository } from './repositories/OrderEventRepository';
-export { createDatabasePool, testDatabaseConnection, closeDatabasePool } from './database';
+export { OrderRepository } from './repositories/OrderRepository';
+export { OrderService } from './services/OrderService';
 
-export type { CreateOrderRequest, TransitionOrderRequest } from './services/OrderService';
-export type { CreateOrderParams, UpdateOrderStatusParams } from './repositories/OrderRepository';
 export type { CreateOrderEventParams } from './repositories/OrderEventRepository';
+export type { CreateOrderParams, UpdateOrderStatusParams } from './repositories/OrderRepository';
+export type { CreateOrderRequest, TransitionOrderRequest } from './services/OrderService';

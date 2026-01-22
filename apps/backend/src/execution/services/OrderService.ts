@@ -4,10 +4,12 @@
  * Implements state transitions and event persistence per ARCHITECTURE.md
  */
 
+import type { Fill, Order, OrderEvent, OrderEventType, OrderStatus } from '@ai-trader/shared';
 import type { Pool } from 'pg';
-import type { Order, OrderEvent, OrderEventType, OrderStatus } from '@ai-trader/shared';
-import { OrderRepository, type CreateOrderParams } from '../repositories/OrderRepository';
+import { FillRepository, type CreateFillParams } from '../repositories/FillRepository';
 import { OrderEventRepository } from '../repositories/OrderEventRepository';
+import { OrderRepository, type CreateOrderParams } from '../repositories/OrderRepository';
+import { PortfolioEventOutboxRepository } from '../repositories/PortfolioEventOutboxRepository';
 
 export interface CreateOrderRequest {
   userId: string;
@@ -65,10 +67,14 @@ function getEventTypeForStatus(status: OrderStatus): OrderEventType {
 export class OrderService {
   private readonly orderRepo: OrderRepository;
   private readonly eventRepo: OrderEventRepository;
+  private readonly fillRepo: FillRepository;
+  private readonly outboxRepo: PortfolioEventOutboxRepository;
 
   constructor(private readonly pool: Pool) {
     this.orderRepo = new OrderRepository(pool);
     this.eventRepo = new OrderEventRepository(pool);
+    this.fillRepo = new FillRepository(pool);
+    this.outboxRepo = new PortfolioEventOutboxRepository(pool);
   }
 
   /**
@@ -199,6 +205,131 @@ export class OrderService {
    */
   async getUserOrders(userId: string, limit = 100, offset = 0): Promise<Order[]> {
     return this.orderRepo.findByUserId(userId, limit, offset);
+  }
+
+  /**
+   * Process fill with deduplication and transactional outbox
+   * Implements atomic transaction:
+   * 1. Insert fill with ON CONFLICT DO NOTHING (deduplication)
+   * 2. Record PARTIAL_FILL or FILLED event
+   * 3. Update order: status, filled_quantity, avg_fill_price
+   * 4. Insert portfolio event to outbox
+   *
+   * Returns null if fill already exists (idempotent)
+   */
+  async processFill(params: CreateFillParams): Promise<Fill | null> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // 1. Insert fill with deduplication
+      const fill = await this.fillRepo.create(params, client);
+
+      // If fill already exists, return null (idempotent)
+      if (!fill) {
+        await client.query('COMMIT');
+        return null;
+      }
+
+      // Get current order
+      const order = await this.orderRepo.findById(params.orderId, client);
+      if (!order) {
+        throw new Error(`Order not found: ${params.orderId}`);
+      }
+
+      // Validate order is in fillable state
+      if (!['OPEN', 'PARTIALLY_FILLED'].includes(order.status)) {
+        throw new Error(`Cannot fill order in ${order.status} status`);
+      }
+
+      // Calculate new filled quantity
+      const newFilledQuantity = order.filledQuantity + params.quantity;
+
+      // Validate fill doesn't exceed order quantity
+      if (newFilledQuantity > order.quantity) {
+        throw new Error(
+          `Fill quantity ${params.quantity} exceeds remaining order quantity. ` +
+            `Order: ${order.quantity}, Already filled: ${order.filledQuantity}`
+        );
+      }
+
+      // Calculate average fill price
+      // Formula: (old_avg * old_filled + new_price * new_qty) / (old_filled + new_qty)
+      const newAvgFillPrice =
+        order.filledQuantity === 0
+          ? params.price
+          : ((order.avgFillPrice ?? 0) * order.filledQuantity + params.price * params.quantity) / newFilledQuantity;
+
+      // Determine new status
+      const newStatus: OrderStatus = newFilledQuantity >= order.quantity ? 'FILLED' : 'PARTIALLY_FILLED';
+
+      // 2. Get next sequence number for event
+      const sequenceNumber = await this.eventRepo.getNextSequenceNumber(params.orderId, client);
+
+      // 3. Record PARTIAL_FILL or FILLED event
+      await this.eventRepo.create(
+        {
+          orderId: params.orderId,
+          eventType: getEventTypeForStatus(newStatus),
+          data: {
+            fillId: fill.id,
+            exchangeFillId: params.exchangeFillId,
+            price: params.price,
+            quantity: params.quantity,
+            fee: params.fee,
+            feeAsset: params.feeAsset,
+            source: params.source,
+            filledQuantity: newFilledQuantity,
+            avgFillPrice: newAvgFillPrice,
+          },
+          sequenceNumber,
+        },
+        client
+      );
+
+      // 4. Update order
+      await this.orderRepo.updateFill(
+        {
+          id: params.orderId,
+          status: newStatus,
+          filledQuantity: newFilledQuantity,
+          avgFillPrice: newAvgFillPrice,
+        },
+        client
+      );
+
+      // 5. Insert portfolio event to outbox
+      await this.outboxRepo.create(
+        {
+          eventType: 'FILL_PROCESSED',
+          userId: order.userId,
+          symbol: order.symbol,
+          orderId: params.orderId,
+          fillId: fill.id,
+          data: {
+            side: order.side,
+            quantity: params.quantity,
+            price: params.price,
+            fee: params.fee,
+            feeAsset: params.feeAsset,
+            timestamp: params.timestamp,
+            orderStatus: newStatus,
+            filledQuantity: newFilledQuantity,
+            avgFillPrice: newAvgFillPrice,
+          },
+        },
+        client
+      );
+
+      await client.query('COMMIT');
+
+      return fill;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   /**

@@ -7,9 +7,9 @@
  */
 
 import { Pool } from 'pg';
-import { OrderService } from '../services/OrderService';
-import { OrderRepository } from '../repositories/OrderRepository';
 import { OrderEventRepository } from '../repositories/OrderEventRepository';
+import { OrderRepository } from '../repositories/OrderRepository';
+import { OrderService } from '../services/OrderService';
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 

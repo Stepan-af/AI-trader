@@ -4,8 +4,8 @@
  * Implements type-safe database operations per ARCHITECTURE.md
  */
 
-import type { Pool, PoolClient } from 'pg';
 import type { Order, OrderSide, OrderStatus, OrderType } from '@ai-trader/shared';
+import type { Pool, PoolClient } from 'pg';
 
 interface OrderRow {
   id: string;
@@ -44,6 +44,13 @@ export interface UpdateOrderStatusParams {
   queuedAt?: Date | null;
 }
 
+export interface UpdateOrderFillParams {
+  id: string;
+  status: OrderStatus;
+  filledQuantity: number;
+  avgFillPrice: number;
+}
+
 export class OrderRepository {
   constructor(private readonly pool: Pool) {}
 
@@ -59,8 +66,8 @@ export class OrderRepository {
         user_id, strategy_id, symbol, side, type, quantity, price, status, filled_quantity
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, 'NEW', 0)
-      RETURNING 
-        id, user_id, strategy_id, symbol, side, type, quantity, price, 
+      RETURNING
+        id, user_id, strategy_id, symbol, side, type, quantity, price,
         status, filled_quantity, avg_fill_price, exchange_order_id,
         created_at, updated_at, queued_at
     `;
@@ -85,8 +92,8 @@ export class OrderRepository {
     const db = client || this.pool;
 
     const query = `
-      SELECT 
-        id, user_id, strategy_id, symbol, side, type, quantity, price, 
+      SELECT
+        id, user_id, strategy_id, symbol, side, type, quantity, price,
         status, filled_quantity, avg_fill_price, exchange_order_id,
         created_at, updated_at, queued_at
       FROM execution.orders
@@ -107,8 +114,8 @@ export class OrderRepository {
    */
   async findByUserId(userId: string, limit = 100, offset = 0): Promise<Order[]> {
     const query = `
-      SELECT 
-        id, user_id, strategy_id, symbol, side, type, quantity, price, 
+      SELECT
+        id, user_id, strategy_id, symbol, side, type, quantity, price,
         status, filled_quantity, avg_fill_price, exchange_order_id,
         created_at, updated_at, queued_at
       FROM execution.orders
@@ -161,8 +168,8 @@ export class OrderRepository {
       UPDATE execution.orders
       SET ${updates.join(', ')}
       WHERE id = $1
-      RETURNING 
-        id, user_id, strategy_id, symbol, side, type, quantity, price, 
+      RETURNING
+        id, user_id, strategy_id, symbol, side, type, quantity, price,
         status, filled_quantity, avg_fill_price, exchange_order_id,
         created_at, updated_at, queued_at
     `;
@@ -182,8 +189,8 @@ export class OrderRepository {
    */
   async findByStatus(status: OrderStatus[], limit = 1000): Promise<Order[]> {
     const query = `
-      SELECT 
-        id, user_id, strategy_id, symbol, side, type, quantity, price, 
+      SELECT
+        id, user_id, strategy_id, symbol, side, type, quantity, price,
         status, filled_quantity, avg_fill_price, exchange_order_id,
         created_at, updated_at, queued_at
       FROM execution.orders
@@ -195,6 +202,36 @@ export class OrderRepository {
     const result = await this.pool.query(query, [status, limit]);
 
     return result.rows.map((row) => this.mapRowToOrder(row as OrderRow));
+  }
+
+  /**
+   * Update order with fill data
+   * Used when processing fills to update filled_quantity, avg_fill_price, and status
+   */
+  async updateFill(params: UpdateOrderFillParams, client?: PoolClient): Promise<Order> {
+    const db = client || this.pool;
+
+    const query = `
+      UPDATE execution.orders
+      SET 
+        status = $2,
+        filled_quantity = $3,
+        avg_fill_price = $4,
+        updated_at = NOW()
+      WHERE id = $1
+      RETURNING
+        id, user_id, strategy_id, symbol, side, type, quantity, price,
+        status, filled_quantity, avg_fill_price, exchange_order_id,
+        created_at, updated_at, queued_at
+    `;
+
+    const result = await db.query(query, [params.id, params.status, params.filledQuantity, params.avgFillPrice]);
+
+    if (result.rows.length === 0) {
+      throw new Error(`Order not found: ${params.id}`);
+    }
+
+    return this.mapRowToOrder(result.rows[0] as OrderRow);
   }
 
   /**
