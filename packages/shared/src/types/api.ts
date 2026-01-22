@@ -5,15 +5,15 @@
  */
 
 import type {
-  Order,
-  Position,
+  BacktestResult,
+  BacktestRun,
   Balance,
+  Order,
   PnLSnapshot,
+  Position,
   Strategy,
   StrategyConfig,
   TradingMode,
-  BacktestRun,
-  BacktestResult,
 } from './domain';
 
 // ============================================================================

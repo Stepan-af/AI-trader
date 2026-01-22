@@ -1,12 +1,11 @@
-
-
-
 # API.md
 
 ## Purpose
+
 Описать публичный API **MVP web-платформы автоматизированной торговли**.
 
 API ориентирован на:
+
 - детерминированность,
 - идемпотентность,
 - чёткое разделение доменных сущностей.
@@ -27,23 +26,24 @@ API ориентирован на:
 
 ### Base URL
 
-
+```
 /api/v1
-
 ```
 
 ### Headers
+
 ```
 
 Authorization: Bearer <JWT>
-Idempotency-Key: <uuid>   // required for POST/PUT
+Idempotency-Key: <uuid> // required for POST/PUT
 Content-Type: application/json
 
-````
+```
 
 ---
 
 ### Pagination
+
 ```json
 {
   "items": [],
@@ -53,7 +53,7 @@ Content-Type: application/json
     "total": 123
   }
 }
-````
+```
 
 ---
 
@@ -67,6 +67,7 @@ Content-Type: application/json
 ```
 
 **Common Error Codes**
+
 - `ORDER_REJECTED`: Order validation failed
 - `RATE_LIMITED`: Too many requests, retry after delay
 - `RISK_LIMIT_EXCEEDED`: Position or exposure limit violated
@@ -74,6 +75,7 @@ Content-Type: application/json
 - `KILL_SWITCH_ACTIVE`: Emergency stop active, no orders accepted
 
 **Rate Limiting Error**
+
 ```json
 {
   "error": "RATE_LIMITED",
@@ -149,6 +151,7 @@ POST /strategies/{id}/start
 ```
 
 **Request**
+
 ```json
 {
   "mode": "PAPER" | "LIVE"
@@ -156,6 +159,7 @@ POST /strategies/{id}/start
 ```
 
 **Preconditions (Enforced)**
+
 - Strategy status must be `STOPPED` or `DRAFT`
 - Kill switch must NOT be active (system-wide check)
 - User API keys must be configured (for LIVE mode)
@@ -166,6 +170,7 @@ POST /strategies/{id}/start
   - Return `HTTP 503` with message: "Portfolio data stale, cannot validate risk limits"
 
 **Response (Success)**
+
 ```json
 {
   "id": "uuid",
@@ -175,6 +180,7 @@ POST /strategies/{id}/start
 ```
 
 **Response (Kill Switch Active)**
+
 ```json
 HTTP 503 Service Unavailable
 
@@ -187,6 +193,7 @@ HTTP 503 Service Unavailable
 ```
 
 **Response (Services Unhealthy)**
+
 ```json
 HTTP 503 Service Unavailable
 
@@ -202,6 +209,7 @@ HTTP 503 Service Unavailable
 ```
 
 **Kill Switch Check (Server-Side)**
+
 ```typescript
 async function startStrategy(strategyId: string, mode: string) {
   const killSwitchActive = await db.queryOne(`
@@ -220,6 +228,7 @@ async function startStrategy(strategyId: string, mode: string) {
 ```
 
 **UI Behavior**
+
 - "Start" button disabled globally while kill switch active
 - Disabled button shows tooltip: "Emergency stop active - contact administrator"
 - Banner at top of page: "⛔ Emergency Stop Active - No trading allowed"
@@ -253,8 +262,8 @@ POST /backtests
 
 **Rules**
 
-* Backtest configuration is immutable after start
-* Same input → same output
+- Backtest configuration is immutable after start
+- Same input → same output
 
 ---
 
@@ -301,8 +310,8 @@ POST /orders
 
 **Notes**
 
-* `mode`: `PAPER` | `LIVE`
-* Idempotency-Key required
+- `mode`: `PAPER` | `LIVE`
+- Idempotency-Key required
 
 ---
 
@@ -370,19 +379,21 @@ GET /portfolio
 
 ```json
 {
-  "balance": 10500.00,
-  "equity": 10720.00,
-  "unrealized_pnl": 220.00,
+  "balance": 10500.0,
+  "equity": 10720.0,
+  "unrealized_pnl": 220.0,
   "data_as_of_timestamp": "2026-01-22T10:15:23.445Z",
   "is_stale": false
 }
 ```
 
 **Response Fields**
+
 - `data_as_of_timestamp`: ISO 8601 timestamp of last portfolio update
 - `is_stale`: Boolean flag (true if data age > 5 seconds)
 
 **Staleness Handling**
+
 - All portfolio endpoints include these fields
 - UI must display timestamp to user
 - If `is_stale: true`, show warning indicator
@@ -432,34 +443,34 @@ GET /alerts
 
 ## Rate Limits (MVP)
 
-* Authenticated: 100 req/min
-* Trading endpoints: 20 req/min
-* Backtests: 5 per hour
+- Authenticated: 100 req/min
+- Trading endpoints: 20 req/min
+- Backtests: 5 per hour
 
 ---
 
 ## Security Notes
 
-* No API key exposure via API
-* All sensitive operations audited
-* Execution failures always return explicit errors
+- No API key exposure via API
+- All sensitive operations audited
+- Execution failures always return explicit errors
 
 ---
 
 ## Explicit Non-Goals (API)
 
-* WebSockets for market data (future)
-* Strategy code upload
-* Tick-level trading APIs
+- WebSockets for market data (future)
+- Strategy code upload
+- Tick-level trading APIs
 
 ---
 
 ## Definition of Done (API)
 
-* All write endpoints are idempotent
-* Domain entities are unambiguous
-* Error cases are explicit and testable
-* API matches architecture and PRD
+- All write endpoints are idempotent
+- Domain entities are unambiguous
+- Error cases are explicit and testable
+- API matches architecture and PRD
 
 ---
 
@@ -469,15 +480,18 @@ GET /alerts
 Ensure DB state matches exchange reality, especially after crashes or network failures.
 
 **Frequency**
+
 - Every 60 seconds for all non-final orders (SUBMITTED, OPEN, PARTIALLY_FILLED, CANCELING)
 - Automatically on Execution Service restart
 - On-demand via admin endpoint (for debugging)
 
 **Reconciliation Window**
+
 - Last 24 hours of orders
 - Older orders assumed final and not re-checked
 
 **Procedure**
+
 1. Query exchange for order status (via REST API)
 2. Compare exchange state with DB state
 3. For each discrepancy:
@@ -520,6 +534,7 @@ Ensure DB state matches exchange reality, especially after crashes or network fa
      - Do NOT auto-correct (data integrity issue)
 
 **Guarantees**
+
 - Exchange is authoritative for facts (what happened)
 - Database is authoritative for intent (what was requested)
 - User actions (cancels) are respected and retried
@@ -540,14 +555,15 @@ wss://api.example.com/ws?token={jwt}
 ### Event Types
 
 **System Recovery**
+
 ```json
 {
   "type": "SYSTEM_RECOVERY_COMPLETE",
   "timestamp": "2026-01-22T10:15:30Z",
   "recovery_duration_ms": 15432,
   "stopped_strategies": [
-    {"id": "uuid1", "name": "RSI Swing", "mode": "LIVE"},
-    {"id": "uuid2", "name": "Grid BTC", "mode": "PAPER"}
+    { "id": "uuid1", "name": "RSI Swing", "mode": "LIVE" },
+    { "id": "uuid2", "name": "Grid BTC", "mode": "PAPER" }
   ],
   "reconciled_order_count": 12,
   "message": "System recovered. Review positions before restarting strategies."
@@ -555,6 +571,7 @@ wss://api.example.com/ws?token={jwt}
 ```
 
 **Kill Switch**
+
 ```json
 {
   "type": "KILL_SWITCH_ACTIVATED",
@@ -566,18 +583,20 @@ wss://api.example.com/ws?token={jwt}
 ```
 
 **Order Fill**
+
 ```json
 {
   "type": "ORDER_FILLED",
   "order_id": "uuid",
   "fill_id": "uuid",
-  "price": 42100.00,
+  "price": 42100.0,
   "quantity": 0.005,
   "timestamp": "2026-01-22T10:01:02Z"
 }
 ```
 
 **Partial Fill**
+
 ```json
 {
   "type": "ORDER_PARTIALLY_FILLED",
@@ -590,11 +609,12 @@ wss://api.example.com/ws?token={jwt}
 ```
 
 **Portfolio Update**
+
 ```json
 {
   "type": "PORTFOLIO_UPDATED",
-  "balance": 10500.00,
-  "unrealized_pnl": 220.00,
+  "balance": 10500.0,
+  "unrealized_pnl": 220.0,
   "data_as_of_timestamp": "2026-01-22T10:15:23Z",
   "is_stale": false
 }

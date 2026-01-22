@@ -1,8 +1,9 @@
-
 # ARCHITECTURE.md
 
 ## Purpose
+
 Описать архитектуру **MVP web-платформы автоматизированной торговли**, ориентированной на:
+
 - корректность исполнения,
 - воспроизводимость,
 - управляемый риск,
@@ -25,20 +26,12 @@
 
 ## High-Level Diagram
 
-
-
 [ Web UI ]
 |
 [ API Gateway ]
 |
--
-
-## | Strategy | Execution | Risk | Portfolio | Backtest |
-
-```
- |
-```
-
+[ | Strategy | Execution | Risk | Portfolio | Backtest | ]
+|
 [ Exchange Adapter (Binance) ]
 |
 [ External Exchange API ]
@@ -58,27 +51,34 @@
 
 **Schema Ownership**
 ```
+
 execution schema:
-  - orders (Execution Service writes/reads)
-  - order_events (Execution Service writes, Portfolio reads)
-  - fills (Execution Service writes, Portfolio reads)
-  - portfolio_events_outbox (Execution Service writes, Portfolio reads)
+
+- orders (Execution Service writes/reads)
+- order_events (Execution Service writes, Portfolio reads)
+- fills (Execution Service writes, Portfolio reads)
+- portfolio_events_outbox (Execution Service writes, Portfolio reads)
 
 portfolio schema:
-  - positions (Portfolio Service owns)
-  - balances (Portfolio Service owns)
-  - pnl_snapshots (Portfolio Service owns)
+
+- positions (Portfolio Service owns)
+- balances (Portfolio Service owns)
+- pnl_snapshots (Portfolio Service owns)
 
 strategy schema:
-  - strategies (Strategy Service owns)
+
+- strategies (Strategy Service owns)
 
 backtest schema:
-  - backtest_runs (Backtest Service owns)
-  - backtest_results (Backtest Service owns)
+
+- backtest_runs (Backtest Service owns)
+- backtest_results (Backtest Service owns)
 
 candles schema:
-  - candles (TimescaleDB hypertable, Exchange Adapter writes)
-```
+
+- candles (TimescaleDB hypertable, Exchange Adapter writes)
+
+````
 
 **Cross-Schema Transaction Rules**
 - **No cross-schema transactions** (services do not write to each other's tables)
@@ -111,9 +111,10 @@ INSERT INTO execution.portfolio_events_outbox (event_type, user_id, symbol, orde
 VALUES ('FILL_PROCESSED', ?, ?, ?, ?, NOW());
 
 COMMIT;
-```
+````
 
 **Position Update Flow (Portfolio Service)**
+
 ```typescript
 // Background worker polls outbox every 500ms
 const events = await db.query(`
@@ -145,12 +146,14 @@ for (const event of events) {
 ```
 
 **Consistency Guarantees**
+
 - Fill and order state: Immediate consistency (single transaction)
 - Fill and position: Eventual consistency (< 1 second p95)
 - Outbox worker failure: Events reprocessed on next poll (idempotent)
 - Crash during outbox processing: Unprocessed events picked up on restart
 
 **Why This Approach?**
+
 - Simpler than distributed transactions (no 2PC)
 - Each service owns its data (clear boundaries)
 - Outbox pattern is proven for event-driven systems
@@ -162,7 +165,9 @@ for (const event of events) {
 ## Service Overview (MVP)
 
 ### 1. API Gateway
+
 **Responsibilities**
+
 - Authentication (JWT)
 - Authorization
 - Rate limiting
@@ -170,31 +175,38 @@ for (const event of events) {
 - Routing to internal services
 
 **Notes**
+
 - No business logic
 - All write requests support idempotency
 
 ---
 
 ### 2. Strategy Service
+
 **Responsibilities**
+
 - Strategy CRUD
 - Strategy configuration
 - Rule-based signal generation (DSL)
 - Strategy validation
 
 **Out of Scope (MVP)**
+
 - ML / RL
 - Custom user code
 - Tick-level signals
 
 **Notes**
+
 - Strategies are **pure functions** over candle data
 - No direct access to exchange or balances
 
 ---
 
 ### 3. Execution Service (Critical)
+
 **Responsibilities**
+
 - Order placement
 - Order lifecycle management
 - Reconciliation with exchange
@@ -202,6 +214,7 @@ for (const event of events) {
 - Enforcing idempotency
 
 **Order Lifecycle State Machine**
+
 ```
 
 NEW
@@ -218,12 +231,14 @@ FILLED
 ```
 
 **Key Guarantees**
+
 - No duplicated orders
 - Safe retries
 - Final state is always known
 - Recovery after restart is deterministic
 
 **Notes**
+
 - Only this service has access to decrypted exchange keys
 - All state changes are persisted as events
 
@@ -235,6 +250,7 @@ FILLED
 Fill processing must be atomic within Execution Service scope. Portfolio updates are eventual via transactional outbox.
 
 **Transaction 1: Execution Service (Atomic)**
+
 ```sql
 -- Scope: execution schema only
 BEGIN;
@@ -264,6 +280,7 @@ COMMIT;
 ```
 
 **Transaction 2: Portfolio Service Worker (Eventual)**
+
 ```typescript
 // Background worker polls outbox every 500ms
 // Runs in separate transaction scope
@@ -277,25 +294,32 @@ const pendingEvents = await executionDb.query(`
 for (const event of pendingEvents) {
   await portfolioDb.transaction(async (trx) => {
     // Update position (portfolio schema)
-    await trx.query(`
+    await trx.query(
+      `
       UPDATE portfolio.positions
       SET quantity = quantity + ?,
           version = version + 1,
           updated_at = NOW()
       WHERE user_id = ? AND symbol = ?
-    `, [event.data.quantity, event.user_id, event.symbol]);
+    `,
+      [event.data.quantity, event.user_id, event.symbol]
+    );
 
     // Mark outbox event as processed (execution schema - separate connection)
-    await executionDb.query(`
+    await executionDb.query(
+      `
       UPDATE execution.portfolio_events_outbox
       SET processed_at = NOW()
       WHERE id = ?
-    `, [event.id]);
+    `,
+      [event.id]
+    );
   });
 }
 ```
 
 **Rollback Handling**
+
 - If any step fails: Full rollback, no partial state
 - Fill processing retried via normal event pipeline
 - Duplicate fills rejected by `ON CONFLICT` (idempotent)
@@ -303,6 +327,7 @@ for (const event of pendingEvents) {
 - After 3 failures: Move to dead letter queue (see DLQ section below)
 
 **Portfolio Service Notification**
+
 - Background worker polls `portfolio_events_outbox` every 500ms
 - Processes events in order (per user_id)
 - Marks processed: `UPDATE ... SET processed_at = NOW()`
@@ -310,6 +335,7 @@ for (const event of pendingEvents) {
 - Fallback: Reconciliation every 60s catches missed events
 
 **Consistency Guarantees (Q2: Maximum Gaps)**
+
 - **p95**: Fill → Position update < 1 second
 - **p99**: Fill → Position update < 3 seconds
 - **Maximum**: Fill → Position update < 60 seconds (reconciliation fallback)
@@ -318,6 +344,7 @@ for (const event of pendingEvents) {
 
 **Batch Processing Limits (Q4: Many Missed Fills)**
 If reconciliation discovers > 50 missed fills:
+
 - Process first 50 immediately (high priority)
 - Queue remaining fills with rate limit: 10 fills/second
 - Log warning: "Large fill gap detected: {count} fills"
@@ -325,6 +352,7 @@ If reconciliation discovers > 50 missed fills:
 - Maximum batch size: 500 fills (if exceeded, trigger manual review alert)
 
 **Recovery After Crash**
+
 - Uncommitted transactions automatically rolled back by Postgres
 - Unprocessed outbox events picked up by worker on restart
 - Order reconciliation detects any missed fills from exchange
@@ -339,6 +367,7 @@ If Execution Service crashes with 100 queued orders, restarting and re-submittin
 **Solution: Gradual Re-Submission**
 
 **Recovery Procedure (On Startup)**
+
 ```typescript
 async function recoverQueuedOrders() {
   const queuedOrders = await db.query(`
@@ -367,12 +396,14 @@ async function recoverQueuedOrders() {
 ```
 
 **Re-Submission Rate**
+
 - 5 orders per second (matches token bucket refill rate)
 - Recovery time: `queuedOrderCount / 5` seconds
 - Example: 100 orders = 20 seconds recovery time
 
 **Stale Order Timeout - Race Condition Handling (Risk #7)**
 Orders queued > 5 minutes marked REJECTED:
+
 ```sql
 -- Run every 60 seconds
 UPDATE execution.orders
@@ -384,6 +415,7 @@ WHERE queued_at < NOW() - INTERVAL '5 minutes'
 ```
 
 **Race Condition Mitigation**
+
 - If order submitted to exchange at 4:59 (just before 5-minute timeout):
   - Order state changes to `OPEN` on exchange acknowledgment
   - Timeout job checks `status = 'SUBMITTED'` → Order already OPEN → Not rejected
@@ -396,11 +428,13 @@ WHERE queued_at < NOW() - INTERVAL '5 minutes'
 - User notification: "Order {id} was delayed in queue but successfully placed"
 
 **Guarantees**
+
 - No order truly lost (reconciliation recovers)
 - Worst-case user confusion: 60 seconds (acceptable for MVP)
 - Exchange reality always wins after reconciliation
 
 **Guarantees**
+
 - No rate limit violations during recovery
 - FIFO order preserved (queued_at ASC)
 - Predictable recovery duration
@@ -409,7 +443,9 @@ WHERE queued_at < NOW() - INTERVAL '5 minutes'
 ---
 
 ### 4. Risk Service
+
 **Responsibilities**
+
 - Pre-trade validation
 - Position size limits
 - Max exposure per symbol
@@ -417,6 +453,7 @@ WHERE queued_at < NOW() - INTERVAL '5 minutes'
 - Emergency stop conditions
 
 **Notes**
+
 - Hard-fail on violations
 - Can block execution globally or per strategy
 
@@ -428,6 +465,7 @@ WHERE queued_at < NOW() - INTERVAL '5 minutes'
 Every order submission must pass Risk Service validation before being sent to exchange.
 
 **Normal Flow (Risk Service Available)**
+
 1. Execution Service receives order request
 2. Query current position for symbol (from Portfolio Service)
 3. Call Risk Service: `POST /risk/validate`
@@ -448,15 +486,18 @@ Every order submission must pass Risk Service validation before being sent to ex
 **Caching Strategy (Reduces Risk Service Load)**
 
 **Cache Key**
+
 ```
 risk:approval:{user_id}:{symbol}:{side}:{quantity}:{position_snapshot}
 ```
 
 **Key Properties**
+
 - `position_snapshot`: Current position size at validation time (e.g., "0.05")
 - Cache becomes invalid if position changes (different cache key)
 
 **Cache Value**
+
 ```json
 {
   "approved": true,
@@ -470,10 +511,12 @@ risk:approval:{user_id}:{symbol}:{side}:{quantity}:{position_snapshot}
 ```
 
 **Cache TTL**
+
 - 10 seconds (fixed)
 - Rationale: Identical repeat orders within 10s are safe (same position, same quantity)
 
 **Cache Usage Logic**
+
 1. Receive order request
 2. Get current position: `position = await PortfolioService.getPosition(userId, symbol)`
 3. Build cache key including `position`
@@ -490,16 +533,19 @@ Cache key based on position value can become stale during concurrent updates.
 **Solution: Version-Based Cache Keys**
 
 **Cache Key Format (Updated)**
+
 ```
 risk:approval:{user_id}:{symbol}:{side}:{quantity}:{position_version}
 ```
 
 Example:
+
 ```
 risk:approval:user123:BTCUSDT:BUY:0.01:42
 ```
 
 **Position Query (Execution Service)**
+
 ```typescript
 const position = await portfolioService.getPosition(userId, symbol);
 // Returns: { quantity: 0.05, version: 42 }
@@ -508,6 +554,7 @@ const cacheKey = `risk:approval:${userId}:${symbol}:${side}:${quantity}:${positi
 ```
 
 **Automatic Cache Invalidation**
+
 - Position update increments version: `version = version + 1`
 - Old cache key: `...0.01:42` (version 42)
 - New cache key: `...0.01:43` (version 43)
@@ -516,6 +563,7 @@ const cacheKey = `risk:approval:${userId}:${symbol}:${side}:${quantity}:${positi
 
 **Version Mismatch Handling**
 Risk Service validates version hasn't changed:
+
 ```typescript
 async validateRisk(request: RiskValidationRequest) {
   // Re-query current position
@@ -537,6 +585,7 @@ async validateRisk(request: RiskValidationRequest) {
 ```
 
 **Execution Service Retry Logic**
+
 ```typescript
 let retries = 0;
 while (retries < 3) {
@@ -560,12 +609,14 @@ throw new Error('POSITION_TOO_VOLATILE');
 ```
 
 **Guarantees**
+
 - Zero stale cache approvals (version mismatch detected)
 - Automatic cache invalidation (version in key)
 - Rare retries (< 1% under normal load)
 - Performance impact: +5ms for version check (acceptable)
 
 **Manual Cache Invalidation (Admin) - Q7: In-Flight Order Handling**
+
 - Endpoint: `POST /admin/risk-cache/clear`
 - Use cases:
   - Risk limits changed by admin
@@ -580,6 +631,7 @@ throw new Error('POSITION_TOO_VOLATILE');
 
 **Fail-Closed Behavior**
 If Risk Service is unreachable:
+
 1. Check cache
 2. If cache hit: Use cached approval (safe, recent validation)
 3. If cache miss: **Reject order** (fail-closed)
@@ -587,6 +639,7 @@ If Risk Service is unreachable:
    - Message: "Risk Service temporarily unavailable. Order rejected for safety."
 
 **Risk Service Timeout and Retry (Q6: Maximum Staleness)**
+
 - Risk Service call timeout: 2 seconds per request
 - Retry logic: 3 attempts with 100ms backoff
 - Total maximum wait: 2s + 2s + 2s = **6 seconds**
@@ -597,6 +650,7 @@ If Risk Service is unreachable:
   - If still stale after 1s: Reject order with `POSITION_DATA_STALE`
 
 **Automatic Kill Switch (Risk Service Down)**
+
 - If Risk Service unreachable for > 30 seconds continuously:
   - Trigger automatic kill switch
   - Stop all active strategies
@@ -605,23 +659,27 @@ If Risk Service is unreachable:
 
 **Monitoring**
 Emit metrics every 10 seconds:
+
 - `risk.cache.hit_rate` (percentage)
 - `risk.cache.size` (number of entries)
 - `risk.approval.latency.p95` (milliseconds)
 - `risk.service.availability` (uptime percentage)
 
 Alert if:
+
 - `risk.cache.hit_rate < 10%` (expected ~30%, indicates cache not working)
 - `risk.approval.latency.p95 > 200ms` (Risk Service slow)
 - `risk.service.availability < 99%` (Risk Service down too often)
 
 **Guarantees**
+
 - Cache never returns approval for outdated position
 - Cache hit rate ~30% (reduces Risk Service load by 30%)
 - Risk Service downtime < 30s has minimal user impact (cache covers gaps)
 - Risk Service downtime > 30s triggers kill switch (safe)
 
 **Trade-offs**
+
 - Identical repeat orders within 10s bypass fresh limit check (accepted risk for performance)
 - Position must be queried from Portfolio Service (adds latency ~20ms)
 - Cache storage overhead: ~100 bytes per entry, ~1000 entries max = 100KB (negligible)
@@ -638,6 +696,7 @@ Portfolio Service returns position with monotonic version number.
 Risk Service validation requires matching version.
 
 **Portfolio Service API Response**
+
 ```json
 GET /portfolio/positions/BTCUSDT
 
@@ -650,11 +709,13 @@ GET /portfolio/positions/BTCUSDT
 ```
 
 **Version Counter Rules**
+
 - Incremented on every position change (fill, manual adjustment)
 - Stored in `positions.version` column (BIGINT, default 1)
 - Never decremented or reused
 
 **Risk Service Validation Request**
+
 ```json
 POST /risk/validate
 
@@ -669,6 +730,7 @@ POST /risk/validate
 ```
 
 **Risk Service Validation Logic**
+
 1. Query Portfolio Service for latest position
 2. Compare `position_version` from request vs. current version
 3. If versions differ:
@@ -678,24 +740,29 @@ POST /risk/validate
 
 **Execution Service Retry Logic**
 When receiving `409 Conflict`:
+
 1. Re-query Portfolio Service for fresh position
 2. Rebuild risk validation request with new version
 3. Retry validation (max 3 attempts with 50ms delay)
 4. If 3 retries exhausted: Reject order with `POSITION_TOO_VOLATILE`
 
 **Cache Key (Updated)**
+
 ```
 risk:approval:{user_id}:{symbol}:{side}:{quantity}:{position_version}
 ```
+
 - Version change automatically invalidates cache (different key)
 - No manual cache invalidation needed
 
 **Guarantees**
+
 - Risk validation uses current position data (no stale reads)
 - Version mismatch detected before order submission
 - Automatic retry resolves transient conflicts
 
 **Performance Impact**
+
 - Version check adds ~5ms to validation (single DB query)
 - Retry rate expected < 1% under normal load
 - Acceptable trade-off for correctness
@@ -705,37 +772,44 @@ risk:approval:{user_id}:{symbol}:{side}:{quantity}:{position_version}
 ### 5. Portfolio Service (Updated)
 
 **Responsibilities**
+
 - Positions
 - Balances
 - Realized / Unrealized PnL
 - Historical snapshots
 
 **Data Source**
+
 - Derived from execution events (`order_events`, `fills`)
 - Enriched with current market prices
 
 **Consistency Model**
+
 - **Eventual consistency** with < 1 second lag (p95)
 - Real-time event stream triggers recalculation
 - Guaranteed consistent after any execution event fully processed
 
 **Recalculation Triggers**
+
 - New fill event → Update position and realized PnL
 - Order state change → Update open order exposure
 - Price update (every 5s) → Update unrealized PnL
 - User query → Check if recalculation needed, run if stale
 
 **Staleness Handling**
+
 - If last update > 1 second ago: Force recalculation before response
 - UI shows "as of <timestamp>" for all PnL data
 - Websocket pushes updates to connected clients
 
 **Read-Heavy Optimization**
+
 - Materialized views for current positions
 - Cached PnL calculations (invalidated on events)
 - Historical snapshots stored hourly for performance
 
 **Guarantees**
+
 - PnL never shows fills that didn't happen
 - Eventual consistency window: < 1 second
 - Queries during heavy trading may show slight lag (acceptable)
@@ -753,35 +827,39 @@ Two-tier priority queue: high-priority (user-facing) and low-priority (backgroun
 **Queue Implementation (Redis-Based)**
 
 **Queue Names**
+
 - `portfolio:high_priority` — User queries, fill events
 - `portfolio:low_priority` — Price updates, scheduled reconciliation
 
 **High-Priority Events**
+
 - User API queries: `GET /portfolio/*` (synchronous recalculation needed)
 - Fill events: Position changed (immediate recalculation required)
 - Reconciliation-sourced fills: Position correction needed
 
 **Low-Priority Events**
+
 - Periodic price updates (every 5 seconds)
 - Full portfolio snapshots (hourly)
 - Historical PnL calculations (daily)
 
 **Worker Behavior**
+
 ```typescript
 while (true) {
   // Always check high-priority first
-  let event = await redis.rpoplpush('portfolio:high_priority', 'portfolio:processing')
+  let event = await redis.rpoplpush('portfolio:high_priority', 'portfolio:processing');
 
   if (!event) {
     // Only process low-priority when high-priority empty
-    event = await redis.rpoplpush('portfolio:low_priority', 'portfolio:processing')
+    event = await redis.rpoplpush('portfolio:low_priority', 'portfolio:processing');
   }
 
   if (event) {
-    await processEvent(event)
-    await redis.lrem('portfolio:processing', 1, event)
+    await processEvent(event);
+    await redis.lrem('portfolio:processing', 1, event);
   } else {
-    await sleep(100)  // No work available
+    await sleep(100); // No work available
   }
 }
 ```
@@ -789,6 +867,7 @@ while (true) {
 **Backlog Handling**
 
 **High-Priority Backlog**
+
 - Target: Queue length < 50
 - If backlog > 100:
   - Log warning: `High-priority portfolio queue backlog: {length}`
@@ -796,6 +875,7 @@ while (true) {
   - Continue processing (no shedding)
 
 **Low-Priority Backlog**
+
 - Target: Queue length < 500
 - If backlog > 1000:
   - Log: `Shedding low-priority portfolio work`
@@ -804,6 +884,7 @@ while (true) {
 
 **Synchronous Recalculation (User Query Path)**
 When user queries portfolio:
+
 1. Check `data_as_of_timestamp` in cache
 2. If stale (> 1 second):
    - Enqueue high-priority recalculation event
@@ -812,16 +893,19 @@ When user queries portfolio:
 3. If fresh: Return cached data with `is_stale: false`
 
 **Guarantees**
+
 - User queries answered within 500ms (p95) under normal load
 - Fill events processed within 1 second (p95)
 - Background work delayed (not dropped) unless extreme backlog
 - Risk Service position queries use fresh data (high-priority path)
 
 **Performance Impact**
+
 - Redis latency: ~1-5ms per enqueue/dequeue (negligible)
 - Worker processes 100-200 events/second (sufficient for MVP)
 
 **Monitoring**
+
 - Emit metrics:
   - `portfolio.queue.high_priority.length`
   - `portfolio.queue.low_priority.length`
@@ -835,16 +919,19 @@ When user queries portfolio:
 ### Portfolio Service Consistency Guarantees (Detailed)
 
 **Consistency Model**
+
 - **Target**: < 1 second lag (p95) under normal load
 - **Actual**: Eventual consistency with transparency
 
 **Event Processing**
+
 - All events (fills, order state changes) include sequence number
 - Events processed in order per `order_id`
 - Processing time target: < 100ms per event
 - If backlog > 200 events: Log warning (monitoring alert)
 
 **Staleness Handling**
+
 - All `/portfolio/*` responses include:
   - `data_as_of_timestamp`: ISO 8601 timestamp of last update
   - `is_stale`: boolean (true if `now - data_as_of_timestamp > 5 seconds`)
@@ -853,26 +940,30 @@ When user queries portfolio:
   - If timeout exceeded: Return last known value with `is_stale: true`
 
 **During Reconciliation**
+
 - Reconciliation events queued with normal priority (no reordering)
 - Reconciliation-sourced fills processed same as websocket fills
 - No special handling (event deduplication prevents double-counting)
 
 **API Response Format**
+
 ```json
 {
-  "balance": 10500.00,
-  "equity": 10720.00,
-  "unrealized_pnl": 220.00,
+  "balance": 10500.0,
+  "equity": 10720.0,
+  "unrealized_pnl": 220.0,
   "data_as_of_timestamp": "2026-01-22T10:15:23.445Z",
   "is_stale": false
 }
 ```
 
 **UI Requirements**
+
 - Display "Portfolio as of [HH:MM:SS]" next to all PnL values
 - If `is_stale: true`: Show warning icon with tooltip "Data may be delayed"
 
 **Guarantees**
+
 - No lost fills (event sourcing ensures all events persisted)
 - No double-counted positions (deduplication by `exchange_fill_id`)
 - Staleness always visible to user
@@ -884,12 +975,14 @@ When user queries portfolio:
 ### Portfolio Events Outbox - Failure Handling
 
 **Retry Policy**
+
 - Max retries: 3 attempts per event
 - Backoff: Exponential (1s, 2s, 4s)
 - Retry triggers: Database errors, network timeouts, validation failures
 
 **Dead Letter Queue (DLQ)**
 After 3 failed retries:
+
 ```sql
 INSERT INTO execution.portfolio_events_dead_letter (
   original_event_id,
@@ -907,11 +1000,13 @@ DELETE FROM execution.portfolio_events_outbox WHERE id = ?;
 ```
 
 **DLQ Monitoring**
+
 - Alert if `COUNT(*) > 0` in DLQ table (critical, requires ops intervention)
 - Dashboard shows DLQ size and event types
 - Weekly manual review of DLQ events (operational procedure)
 
 **Manual Replay Procedure**
+
 1. Ops team investigates failure reason
 2. Fix root cause (e.g., invalid data, schema mismatch)
 3. Replay events via admin endpoint:
@@ -928,6 +1023,7 @@ DELETE FROM execution.portfolio_events_outbox WHERE id = ?;
 **Dead Letter Queue (DLQ) - Poison Message Handling**
 
 **DLQ Schema**
+
 ```sql
 CREATE TABLE execution.portfolio_events_dead_letter (
   id UUID PRIMARY KEY,
@@ -941,11 +1037,13 @@ CREATE TABLE execution.portfolio_events_dead_letter (
 ```
 
 **DLQ Trigger Conditions**
+
 - Event processing fails 3 consecutive times
 - Failure types: JSON parse error, schema validation error, database constraint violation
 - Each retry attempt logged with error details
 
 **DLQ Processing**
+
 ```sql
 -- After 3rd failure, move to DLQ
 INSERT INTO execution.portfolio_events_dead_letter (
@@ -960,11 +1058,13 @@ DELETE FROM execution.portfolio_events_outbox WHERE id = ?;
 ```
 
 **DLQ Monitoring**
+
 - Alert if `COUNT(*) > 0` in DLQ table (critical severity)
 - Dashboard shows DLQ size, event types, and failure reasons
 - Ops team notified immediately via PagerDuty/email
 
 **Manual Replay Procedure**
+
 1. Ops team investigates `failure_reason` in DLQ
 2. Fix root cause (schema migration, data cleanup, code fix)
 3. Replay via admin endpoint: `POST /admin/portfolio-events/replay`
@@ -973,12 +1073,14 @@ DELETE FROM execution.portfolio_events_outbox WHERE id = ?;
 6. If failed again: Escalate to engineering
 
 **Fallback Mechanism**
+
 - Reconciliation (every 60s) detects position inconsistencies
 - Reconciliation emits corrective events (bypasses outbox)
 - Ensures positions eventually consistent even if outbox fails
 - Max staleness: 60 seconds (reconciliation interval)
 
 **Guarantees**
+
 - No silent event loss (all failures logged to DLQ)
 - Poison messages isolated (don't block healthy events)
 - Positions eventually consistent via reconciliation fallback
@@ -990,6 +1092,7 @@ DELETE FROM execution.portfolio_events_outbox WHERE id = ?;
 
 **Problem**
 Fills can arrive from multiple sources:
+
 - Binance websocket (real-time)
 - REST API reconciliation (every 60s)
 - Crash recovery reconciliation (on restart)
@@ -1000,6 +1103,7 @@ Binance provides unique `tradeId` for each fill. Use this as deduplication key.
 **Implementation**
 
 **Database Schema**
+
 ```sql
 CREATE TABLE fills (
   id UUID PRIMARY KEY,
@@ -1016,6 +1120,7 @@ CREATE TABLE fills (
 ```
 
 **Processing Logic**
+
 1. Receive fill event from any source (websocket, REST, recovery)
 2. Attempt to INSERT into `fills` table
 3. If insert succeeds: Event is new, process normally
@@ -1025,16 +1130,19 @@ CREATE TABLE fills (
    - Return success (idempotent operation)
 
 **Deduplication Window**
+
 - Infinite (constraint is permanent)
 - Old fills can be archived after reconciliation window (24 hours) but constraint remains
 
 **Race Condition Handling**
+
 - Multiple workers can attempt to insert same fill concurrently
 - Database serializes inserts via unique constraint
 - Only first insert succeeds, others fail gracefully
 - No application-level locking needed
 
 **Guarantees**
+
 - Each `exchange_fill_id` processed exactly once
 - Safe to retry fill processing
 - No double-counted positions or PnL
@@ -1043,12 +1151,15 @@ CREATE TABLE fills (
 ---
 
 ### 6. Backtest Service
+
 **Responsibilities**
+
 - Candle-based simulation
 - Deterministic execution
 - Strategy performance metrics
 
 **Notes**
+
 - No async execution in MVP
 - Backtests are immutable once started
 
@@ -1060,23 +1171,27 @@ CREATE TABLE fills (
 All servers must use NTP time synchronization with < 100ms drift.
 
 **Why Critical**
+
 - Event sequence ordering depends on timestamps
 - Reconciliation compares DB timestamps with exchange timestamps
 - Portfolio calculations use time-windowed data
 - Stale data detection relies on accurate clocks
 
 **Monitoring**
+
 - Health check queries system time vs. NTP server every 60 seconds
 - Endpoint: `GET /health` includes `{"clock_drift_ms": 23}`
 - If drift > 100ms: Log warning, increment metric
 - If drift > 500ms: **Activate kill switch** (event ordering unreliable)
 
 **Implementation**
+
 - Docker containers use host NTP (configured at infrastructure level)
 - Kubernetes pods inherit node NTP configuration
 - All timestamps stored in UTC (PostgreSQL `TIMESTAMPTZ` type)
 
 **Acceptance Criteria**
+
 - All server instances within 100ms of NTP server (p99)
 - Kill switch activates if any instance drifts > 500ms
 - Monitoring dashboard shows drift across all instances
@@ -1088,6 +1203,7 @@ All servers must use NTP time synchronization with < 100ms drift.
 ### PostgreSQL + TimescaleDB (Single Cluster)
 
 **Schemas**
+
 - `auth`
 - `strategy`
 - `execution`
@@ -1096,6 +1212,7 @@ All servers must use NTP time synchronization with < 100ms drift.
 - `analytics`
 
 **Core Tables**
+
 - `orders`
 - `order_events`
 - `fills`
@@ -1106,6 +1223,7 @@ All servers must use NTP time synchronization with < 100ms drift.
 - `backtest_results`
 
 **Design Rules**
+
 - All state transitions recorded as events
 - No silent updates
 - Soft deletes only where required
@@ -1113,12 +1231,15 @@ All servers must use NTP time synchronization with < 100ms drift.
 ---
 
 ### Redis
+
 **Usage**
+
 - Job queue (BullMQ)
 - Short-lived cache
 - Rate limiting counters
 
 **Non-Usage**
+
 - Not a source of truth
 - No long-term state
 
@@ -1137,6 +1258,7 @@ All servers must use NTP time synchronization with < 100ms drift.
 ## Exchange Integration
 
 ### Exchange Adapter
+
 - Abstracts Binance API
 - Handles:
   - REST + WebSocket
@@ -1144,6 +1266,7 @@ All servers must use NTP time synchronization with < 100ms drift.
   - Error normalization
 
 **Design Rule**
+
 > No other service talks directly to the exchange.
 
 ---
@@ -1151,6 +1274,7 @@ All servers must use NTP time synchronization with < 100ms drift.
 ### Exchange Rate Limit Handling
 
 **Binance Rate Limits (Spot)**
+
 - Order placement: 50 orders per 10 seconds per API key
 - Order queries: 160 requests per minute
 - Account queries: 5 requests per second
@@ -1161,6 +1285,7 @@ Implement **global rate limiter** in Exchange Adapter to prevent hitting limits.
 **Implementation**
 
 **Order Submission Rate Limiter**
+
 - Algorithm: Token bucket
 - Capacity: 50 tokens
 - Refill rate: 5 tokens per second (50 per 10 seconds)
@@ -1170,6 +1295,7 @@ Implement **global rate limiter** in Exchange Adapter to prevent hitting limits.
   - If no tokens: Queue order, wait for token refill
 
 **Queuing Behavior**
+
 - Queue: In-memory FIFO queue per Execution Service instance
 - Max queue size: 100 orders
 - Max wait time: 30 seconds
@@ -1178,12 +1304,14 @@ Implement **global rate limiter** in Exchange Adapter to prevent hitting limits.
 
 **Retry Logic (Execution Service)**
 When Exchange Adapter returns 429:
+
 1. Extract `retry_after_ms` from response
 2. Wait for `retry_after_ms` (or exponential backoff if not provided)
 3. Retry order submission (max 3 attempts)
 4. If all retries exhausted: Mark order as `REJECTED` with reason `RATE_LIMITED`
 
 **Exponential Backoff**
+
 - Attempt 1: Wait 1 second
 - Attempt 2: Wait 2 seconds
 - Attempt 3: Wait 4 seconds
@@ -1191,6 +1319,7 @@ When Exchange Adapter returns 429:
 
 **User Notification**
 If order rejected due to rate limiting:
+
 - API response:
   ```json
   {
@@ -1203,6 +1332,7 @@ If order rejected due to rate limiting:
 - Strategy behavior: Strategy-specific (DCA/Grid may retry, Swing may skip)
 
 **429 Response Format (Exchange Adapter → Execution Service)**
+
 ```json
 {
   "status": 429,
@@ -1215,26 +1345,31 @@ If order rejected due to rate limiting:
 
 **Monitoring**
 Emit metrics every 10 seconds:
+
 - `exchange.rate_limit.tokens_available` (current token count)
 - `exchange.rate_limit.queue_depth` (orders waiting)
 - `exchange.rate_limit.rejections` (count of 429 responses to users)
 - `exchange.order.latency.queued` (time spent in queue)
 
 Alert if:
+
 - `queue_depth > 50` (approaching queue limit)
 - `rejections > 10 per minute` (users being rejected)
 - `latency.queued.p95 > 5000ms` (orders waiting too long)
 
 **Guarantees**
+
 - Binance rate limits never exceeded (token bucket prevents)
 - Orders queued fairly (FIFO)
 - Users informed when rate limited (explicit error)
 
 **Limitations (MVP)**
+
 - Single Execution Service instance only (queue not distributed)
 - Post-MVP: Distributed rate limiter (Redis-based) for multi-instance deployment
 
 **Alternatives Considered**
+
 - Reject immediately without queuing: Too harsh for users
 - Unlimited queue: Risk of memory overflow
 - Per-strategy rate limits: Too complex for MVP
@@ -1250,11 +1385,13 @@ In-memory queue lost on Execution Service restart → orders stuck in SUBMITTED 
 Persist queue state to database. Recover on restart.
 
 **Database Schema Addition**
+
 ```sql
 ALTER TABLE orders ADD COLUMN queued_at TIMESTAMPTZ NULL;
 ```
 
 **Queue Workflow (Updated)**
+
 1. Order arrives, rate limit tokens unavailable
 2. Database update: `UPDATE orders SET queued_at = NOW() WHERE id = ?`
 3. Add to in-memory FIFO queue
@@ -1266,6 +1403,7 @@ ALTER TABLE orders ADD COLUMN queued_at TIMESTAMPTZ NULL;
 On Execution Service restart:
 
 1. Query queued orders:
+
    ```sql
    SELECT * FROM orders
    WHERE queued_at IS NOT NULL
@@ -1288,11 +1426,13 @@ On Execution Service restart:
    ```
 
 **Guarantees**
+
 - No silent order loss on crash
 - Queued orders resume after restart (< 30s delay)
 - Stale orders (> 5 min) explicitly rejected with reason
 
 **Performance Impact**
+
 - 2 extra database writes per queued order (queued_at set/clear)
 - Acceptable for MVP scale (< 50 orders/10s)
 - Post-MVP: Redis-based distributed queue
@@ -1303,12 +1443,14 @@ On Execution Service restart:
 
 **Purpose**
 Binance WebSocket streams provide real-time updates for:
+
 - Order execution (fills, state changes)
 - Account balance updates
 
 **Connection Lifecycle**
 
 **Initial Connection**
+
 1. Subscribe to user data stream (requires REST API call to get listenKey)
 2. Open WebSocket connection to `wss://stream.binance.com:9443/ws/{listenKey}`
 3. Set connection timeout: 30 seconds
@@ -1316,10 +1458,12 @@ Binance WebSocket streams provide real-time updates for:
 5. If connection fails: Retry with exponential backoff
 
 **Keepalive**
+
 - Send `listenKey` refresh request every 30 minutes (Binance requirement)
 - If refresh fails: Close connection, reconnect
 
 **Disconnect Detection**
+
 - WebSocket ping/pong timeout: 10 seconds
 - If no pong received: Assume connection dead
 - Log: "WebSocket disconnected, reason={reason}"
@@ -1328,6 +1472,7 @@ Binance WebSocket streams provide real-time updates for:
 **Automatic Reconnection**
 
 **Reconnection Strategy**
+
 - Exponential backoff: 1s, 2s, 4s, 8s, 16s, 32s (max)
 - Max reconnection attempts: Unlimited (keep trying)
 - On each attempt:
@@ -1340,6 +1485,7 @@ Binance WebSocket streams provide real-time updates for:
 After WebSocket reconnects, we may have missed events during downtime.
 
 **Recovery Procedure**
+
 1. Log: "WebSocket reconnected, recovering missed events"
 2. Query REST API for all non-final orders:
    - `GET /api/v3/openOrders` (returns all OPEN orders)
@@ -1352,11 +1498,13 @@ After WebSocket reconnects, we may have missed events during downtime.
 5. Resume normal WebSocket message processing
 
 **Event Processing During Disconnection**
+
 - WebSocket messages not received during disconnect
 - Reconciliation (runs every 60s) will catch missed events as fallback
 - Gap recovery on reconnect reduces delay (typically < 10s instead of up to 60s)
 
 **User Impact**
+
 - During disconnect: Portfolio updates delayed until reconnect or reconciliation
 - Portfolio Service shows `is_stale: true` if last update > 5s ago
 - Users see warning: "Connection issue, data may be delayed"
@@ -1365,30 +1513,35 @@ After WebSocket reconnects, we may have missed events during downtime.
 **Monitoring**
 
 **Metrics**
+
 - `exchange.websocket.status` (1=connected, 0=disconnected)
 - `exchange.websocket.reconnect_count` (counter)
 - `exchange.websocket.disconnect_duration_ms` (histogram)
 - `exchange.websocket.gap_recovery_events` (count of recovered events per reconnect)
 
 **Alerts**
+
 - Disconnect duration > 30 seconds: Warning
 - Disconnect duration > 2 minutes: Critical (trigger manual investigation)
 - Reconnection failures > 5 consecutive: Critical (API key issue or exchange down)
 
 **Graceful Degradation**
 If WebSocket repeatedly fails to reconnect (> 5 minutes):
+
 1. Log critical error: "WebSocket connection permanently lost"
 2. Continue operating on REST API polling only (reconciliation every 60s)
 3. No kill switch triggered (system still functional, just slower updates)
 4. Notify users: "Real-time updates unavailable, using delayed polling"
 
 **Guarantees**
+
 - Automatic reconnection (no manual intervention)
 - Missed events recovered on reconnect (< 10s delay typically)
 - Reconciliation as fallback (< 60s delay worst case)
 - No lost fills (all events eventually captured)
 
 **Non-Guarantees**
+
 - Event delivery during disconnect window (WebSocket messages lost, recovered from REST)
 - Real-time updates during disconnect (delay until reconnect or reconciliation)
 
@@ -1405,78 +1558,88 @@ Circuit breaker pattern with three states: CLOSED → OPEN → HALF_OPEN.
 **Circuit Breaker States**
 
 **CLOSED (Normal Operation)**
+
 - All requests pass through
 - Track failure rate over sliding window (60 seconds)
 - If failure rate > 50% over 10+ requests: Transition to OPEN
 
 **OPEN (Fail-Fast)**
+
 - All requests immediately rejected
 - Return `HTTP 503 Service Unavailable`
 - Error: `{"error": "EXCHANGE_UNAVAILABLE", "message": "Exchange API circuit breaker open, retry after 30s"}`
 - After 30 seconds: Transition to HALF_OPEN
 
 **HALF_OPEN (Testing Recovery)**
+
 - Allow 3 test requests through
 - If all 3 succeed: Transition to CLOSED
 - If any fails: Transition back to OPEN (wait another 30s)
 
 **Failure Criteria**
 Count as failure:
+
 - HTTP 5xx responses from exchange
 - Network timeout (> 10s)
 - Connection refused
 - TLS/SSL errors
 
 Do NOT count as failure:
+
 - HTTP 4xx (client errors, rate limits handled separately)
 - Successful responses (2xx)
 
 **Implementation (Per Exchange Adapter Instance)**
+
 ```typescript
 class CircuitBreaker {
-  state: 'CLOSED' | 'OPEN' | 'HALF_OPEN'
-  failures: number
-  requests: number
-  lastFailureTime: Date
+  state: 'CLOSED' | 'OPEN' | 'HALF_OPEN';
+  failures: number;
+  requests: number;
+  lastFailureTime: Date;
 
   async execute(fn: () => Promise<any>) {
     if (this.state === 'OPEN') {
       if (Date.now() - this.lastFailureTime > 30000) {
-        this.state = 'HALF_OPEN'
-        this.testRequests = 0
+        this.state = 'HALF_OPEN';
+        this.testRequests = 0;
       } else {
-        throw new Error('EXCHANGE_UNAVAILABLE')
+        throw new Error('EXCHANGE_UNAVAILABLE');
       }
     }
 
     try {
-      const result = await fn()
-      this.onSuccess()
-      return result
+      const result = await fn();
+      this.onSuccess();
+      return result;
     } catch (error) {
-      this.onFailure()
-      throw error
+      this.onFailure();
+      throw error;
     }
   }
 }
 ```
 
 **Monitoring**
+
 - Emit metric: `exchange.circuit_breaker.state` (0=CLOSED, 1=OPEN, 2=HALF_OPEN)
 - Alert if state transitions to OPEN (critical)
 - Dashboard showing failure rate and state transitions
 
 **User Impact**
+
 - Orders rejected with explicit error during OPEN state
 - UI shows: "Exchange temporarily unavailable, retry in 30s"
 - Automatic retry when circuit CLOSED (no user action needed)
 
 **Guarantees**
+
 - Fail-fast during exchange outages (< 100ms response vs. 10s timeout)
 - Automatic recovery testing every 30s
 - Resource exhaustion prevented (no timeout accumulation)
 
 **Post-MVP Enhancement**
+
 - Per-endpoint circuit breakers (order submission vs. queries)
 - Adaptive timeout based on recent latency
 
@@ -1485,12 +1648,14 @@ class CircuitBreaker {
 ## Failure Handling
 
 ### Expected Failures
+
 - Network issues
 - Exchange rate limits
 - Partial fills
 - Delayed confirmations
 
 ### Handling Strategy
+
 - Retry with backoff
 - Reconcile via exchange state
 - Never assume success without confirmation
@@ -1529,10 +1694,12 @@ class CircuitBreaker {
 ### Kill Switch Execution Flow (Detailed)
 
 **Trigger Sources**
+
 - Manual: User clicks "Emergency Stop" button
 - Automatic: Risk Service down > 30s, time drift > 5s
 
 **Phase 1: Immediate Actions (< 1 second)**
+
 1. Set global flag: `UPDATE system_config SET kill_switch_active = true`
 2. Stop all strategies: `UPDATE strategies SET status = 'STOPPED' WHERE status LIKE 'ACTIVE_%'`
 3. Reject new order submissions (API Gateway returns `HTTP 503`)
@@ -1558,6 +1725,7 @@ New order state for race condition scenario:
 - User explicitly warned via notification
 
 **Database Update**
+
 ```sql
 UPDATE orders
 SET status = 'POTENTIALLY_EXECUTED',
@@ -1570,6 +1738,7 @@ WHERE status = 'SUBMITTED'
 Cancel all acknowledged orders:
 
 1. Query:
+
    ```sql
    SELECT * FROM orders
    WHERE status IN ('OPEN', 'PARTIALLY_FILLED')
@@ -1588,6 +1757,7 @@ Cancel all acknowledged orders:
 **Phase 4: User Notification (Immediate, don't wait for Phase 3)**
 
 **Email (sent after Phase 1 completes)**
+
 ```
 Subject: Emergency Stop Activated - AI Trader Platform
 
@@ -1618,6 +1788,7 @@ Questions? Contact support.
 ```
 
 **WebSocket Event**
+
 ```json
 {
   "type": "KILL_SWITCH_ACTIVATED",
@@ -1631,6 +1802,7 @@ Questions? Contact support.
 ```
 
 **Guarantees**
+
 - Strategies stopped within 1 second
 - New orders rejected immediately
 - All OPEN orders cancelled (best-effort, 2-minute window)
@@ -1638,12 +1810,14 @@ Questions? Contact support.
 - User explicitly warned about potentially executing orders
 
 **Non-Guarantees (Explicit)**
+
 - SUBMITTED orders may execute (race condition accepted)
 - OPEN orders may partially fill during cancellation window
 - Kill switch is "emergency brake" not "atomic rollback"
 - Acceptable for non-HFT system (candle-based strategies)
 
 **Total Kill Switch Duration**
+
 - Phase 1: < 1 second
 - Phase 2: 10 seconds
 - Phase 3: up to 2 minutes
@@ -1661,6 +1835,7 @@ Manual only (no automatic restart):
 7. Users manually restart strategies if desired
 
 **Scope**
+
 - **MVP**: Global kill switch only (affects all users, all strategies)
 - **Post-MVP**: Per-user and per-strategy kill switches
 
@@ -1686,6 +1861,7 @@ Manual only (no automatic restart):
   - new execution modes
 
 ---
+
 ```
 
 ## Order Reconciliation
@@ -1791,78 +1967,87 @@ Ensure DB state matches exchange reality, especially after crashes or network fa
 - **To**: All users with strategies stopped due to recovery
 - **Subject**: "Trading Platform Recovered - Action Required"
 - **Body**:
-  ```
-  The AI Trader platform has recovered from a restart.
+```
 
-  Recovery details:
-  - Recovery completed at: [timestamp]
-  - Duration: [duration in seconds]
-  - Orders reconciled: [count]
+The AI Trader platform has recovered from a restart.
 
-  Strategies stopped:
-  [List of strategy names with IDs]
+Recovery details:
 
-  Action required:
-  1. Review your order history: [link]
-  2. Verify your positions match expectations: [link]
-  3. Manually restart strategies if desired
+- Recovery completed at: [timestamp]
+- Duration: [duration in seconds]
+- Orders reconciled: [count]
 
-  Important:
-  - All strategies remain STOPPED until you manually restart them
-  - This is a safety measure to prevent unintended trading
-  - Do NOT restart strategies until you verify system state
+Strategies stopped:
+[List of strategy names with IDs]
 
-  Questions? Contact support.
-  ```
+Action required:
+
+1. Review your order history: [link]
+2. Verify your positions match expectations: [link]
+3. Manually restart strategies if desired
+
+Important:
+
+- All strategies remain STOPPED until you manually restart them
+- This is a safety measure to prevent unintended trading
+- Do NOT restart strategies until you verify system state
+
+Questions? Contact support.
+
+````
 - **Sent**: Within 30 seconds of recovery completion
 
 **2. UI Banner (Persistent)**
 - **Trigger**: User logs in or refreshes page after recovery
 - **Message**: "⚠️ System recovered from restart at [HH:MM]. [N] strategies were stopped. [Review] [Dismiss]"
 - **Behavior**:
-  - Displayed at top of all pages
-  - Yellow background (warning, not error)
-  - "Review" button → Opens modal with:
-    - List of stopped strategies
-    - Link to order history
-    - Link to positions
-    - "I understand, dismiss" button
-  - Banner persists until user clicks "Dismiss"
-  - Re-appears on every page load until dismissed
+- Displayed at top of all pages
+- Yellow background (warning, not error)
+- "Review" button → Opens modal with:
+  - List of stopped strategies
+  - Link to order history
+  - Link to positions
+  - "I understand, dismiss" button
+- Banner persists until user clicks "Dismiss"
+- Re-appears on every page load until dismissed
 
 **3. WebSocket Push (Real-Time)**
 - **Event**: Sent to all connected WebSocket clients
 - **Payload**:
-  ```json
-  {
-    "type": "SYSTEM_RECOVERY_COMPLETE",
-    "timestamp": "2026-01-22T10:15:30Z",
-    "recovery_duration_ms": 15432,
-    "stopped_strategies": [
-      {"id": "uuid1", "name": "RSI Swing", "mode": "LIVE"},
-      {"id": "uuid2", "name": "Grid BTC", "mode": "PAPER"}
-    ],
-    "reconciled_order_count": 12,
-    "message": "System recovered. Review positions before restarting strategies."
-  }
-  ```
+```json
+{
+  "type": "SYSTEM_RECOVERY_COMPLETE",
+  "timestamp": "2026-01-22T10:15:30Z",
+  "recovery_duration_ms": 15432,
+  "stopped_strategies": [
+    {"id": "uuid1", "name": "RSI Swing", "mode": "LIVE"},
+    {"id": "uuid2", "name": "Grid BTC", "mode": "PAPER"}
+  ],
+  "reconciled_order_count": 12,
+  "message": "System recovered. Review positions before restarting strategies."
+}
+````
+
 - **Client Behavior**:
   - Display toast notification (auto-dismiss after 10 seconds)
   - Refresh strategy list UI (show all as STOPPED)
   - Show persistent banner (as described above)
 
 **Strategy Behavior After Recovery**
+
 - All strategies transition to `STOPPED` state (even if they were `ACTIVE_LIVE` before crash)
 - No automatic restart (prevents runaway trading if crash was due to strategy bug)
 - User must manually review and restart each strategy
 - Strategy configuration remains unchanged (only state changes)
 
 **Recovery Timeout**
+
 - **Target**: < 30 seconds (typical)
 - **Maximum**: 2 minutes (worst case with 100+ in-flight orders)
 - **If exceeded**: Log critical error, continue accepting new orders anyway (fail-open for availability)
 
 **Guarantees**
+
 - All in-flight orders reconciled before accepting new orders
 - All users with stopped strategies notified via email
 - UI shows recovery status on next login
@@ -1870,9 +2055,11 @@ Ensure DB state matches exchange reality, especially after crashes or network fa
 - Recovery completes deterministically (same inputs → same outputs)
 
 **Non-Guarantees**
+
 - Recovery time may vary based on exchange API latency
 - Email delivery may be delayed by email provider
 - WebSocket clients that were disconnected during crash won't receive push (they'll see banner on reconnect)
+
 ---
 
 ## Time Synchronization and Drift Recovery
@@ -1881,6 +2068,7 @@ Ensure DB state matches exchange reality, especially after crashes or network fa
 System time must stay synchronized with Binance server time for correct candle alignment and order timing.
 
 **Drift Detection**
+
 - Query Binance server time on service startup
 - Re-query every 60 seconds during normal operation
 - Calculate drift: `drift_seconds = |local_time - binance_time|`
@@ -1888,12 +2076,14 @@ System time must stay synchronized with Binance server time for correct candle a
 **Drift Thresholds**
 
 **Threshold 1: 1-5 seconds (WARNING)**
+
 - Log warning: `Time drift detected: {drift_seconds}s`
 - Emit metric: `time_drift_seconds = {value}`
 - Continue normal operation
 - Alert ops team (Slack/PagerDuty)
 
 **Threshold 2: > 5 seconds (CRITICAL)**
+
 - Log critical error: `Dangerous time drift: {drift_seconds}s, activating kill switch`
 - Trigger automatic kill switch (stop all strategies)
 - Block new order submissions (API returns `HTTP 503`)
@@ -1904,10 +2094,12 @@ System time must stay synchronized with Binance server time for correct candle a
 
 **Recovery Conditions**
 System auto-recovers when drift corrects:
+
 1. Drift < 1 second for 3 consecutive checks (3 minutes total)
 2. No other active kill switch reasons
 
 **Recovery Procedure**
+
 ```
 Check 1 (60s): drift = 0.8s → Log "Time drift improving"
 Check 2 (120s): drift = 0.7s → Log "Time drift stable"
@@ -1915,6 +2107,7 @@ Check 3 (180s): drift = 0.6s → Trigger recovery
 ```
 
 On third consecutive check with drift < 1s:
+
 1. Clear kill switch: `UPDATE system_config SET kill_switch_active = false`
 2. Log: `Time drift resolved, system resuming normal operation`
 3. Emit metric: `time_drift_critical = 0`
@@ -1923,12 +2116,14 @@ On third consecutive check with drift < 1s:
 
 **Manual Recovery (If Drift Persists)**
 If drift > 5s for > 15 minutes:
+
 1. Ops team investigates NTP configuration
 2. Manual server time correction
 3. Manual kill switch clear: `POST /admin/kill-switch/clear`
 4. Manual reconciliation: `POST /admin/reconcile/force`
 
 **In-Flight Orders During Drift Detection**
+
 - Orders submitted before drift exceeded 5s: Allowed to complete normally
 - Orders in rate limit queue when drift detected:
   ```sql
@@ -1942,6 +2137,7 @@ If drift > 5s for > 15 minutes:
 **User Notification**
 
 **Email (sent when drift > 5s)**
+
 ```
 Subject: Trading Stopped - System Time Issue
 
@@ -1964,29 +2160,35 @@ Do NOT restart strategies until you receive confirmation.
 ```
 
 **UI Banner**
+
 ```
 ⚠️ Time Synchronization Issue: Trading stopped due to time drift ([X]s). Automatic recovery in progress.
 ```
 
 **Candle Timestamp Handling**
+
 - Use exchange-provided timestamps for candle data
 - Never generate timestamps locally
 - Store all timestamps in UTC
 
 **Guarantees**
+
 - No trading during dangerous time drift (> 5s)
 - Automatic recovery when drift corrects (< 3 min downtime for transient issues)
 - Manual intervention available for persistent issues
 - User always notified of time drift events
 
 **Non-Guarantees**
+
 - Cannot prevent drift from occurring (infrastructure issue)
 - Brief unavailability (< 3 min) acceptable for correctness
 
 **Monitoring**
+
 - Alert if drift 1-5s (warning, investigate NTP)
 - Alert if drift > 5s (critical, kill switch activated)
 - Dashboard showing drift history (24h window)
+
 ---
 
 ## Backtest Determinism
@@ -1997,11 +2199,13 @@ Identical input → identical output for any backtest run.
 **Enforcement Mechanisms**
 
 **1. Candle Data Versioning**
+
 - Each backtest records `candle_data_version` (hash of data set)
 - Re-run must use same data version
 - Data updates create new version
 
 **2. Computation Parameters**
+
 - All parameters stored in `backtest_runs` table:
   - Strategy configuration (JSON snapshot)
   - Initial balance
@@ -2011,28 +2215,34 @@ Identical input → identical output for any backtest run.
 - Parameters immutable after backtest starts
 
 **3. Floating-Point Consistency**
+
 - All calculations use IEEE 754 double precision
 - No random rounding modes
 - Intermediate results not truncated
 
 **4. Random Seed Control**
+
 - If strategy uses randomness (future feature): seed stored and reused
 - MVP: No randomness in strategies
 
 **5. Timezone Handling**
+
 - All timestamps stored in UTC
 - Candle alignment uses exchange timezone
 - No local timezone dependencies
 
 **Validation**
+
 - Re-running backtest with same ID checks:
   - Candle data version matches
   - Parameters match
   - If mismatch: Reject with error
 
 **Non-Determinism Sources (Explicitly Avoided)**
+
 - ❌ Live exchange API calls during backtest
 - ❌ System time dependencies
 - ❌ Unversioned data
 - ❌ Non-deterministic random generators
+
 ---
