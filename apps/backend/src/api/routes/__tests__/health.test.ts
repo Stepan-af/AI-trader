@@ -2,8 +2,8 @@
  * Health Check Integration Tests
  */
 
-import request from 'supertest';
 import type { Express } from 'express';
+import request from 'supertest';
 import { createApp } from '../../app';
 
 describe('Health Check Endpoint', () => {

@@ -3,8 +3,8 @@
  * Provides system health status per API.md
  */
 
-import type { Request, Response } from 'express';
 import { getRedisClient, type RedisClient } from '@ai-trader/shared';
+import type { Request, Response } from 'express';
 import pg from 'pg';
 
 interface HealthCheckResponse {

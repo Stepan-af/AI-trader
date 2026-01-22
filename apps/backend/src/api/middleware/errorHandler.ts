@@ -3,7 +3,7 @@
  * Centralized error handling per API.md error format
  */
 
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 
 /**
  * Not Found Handler

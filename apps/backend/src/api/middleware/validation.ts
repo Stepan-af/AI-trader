@@ -3,7 +3,7 @@
  * Validates request format per API.md
  */
 
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 
 /**
  * Validate JSON content type for POST/PUT

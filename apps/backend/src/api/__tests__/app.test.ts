@@ -5,8 +5,8 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
-import request from 'supertest';
 import type { Express } from 'express';
+import request from 'supertest';
 import { createApp } from '../app';
 
 describe('API Gateway', () => {

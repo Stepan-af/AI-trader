@@ -5,8 +5,8 @@
  * Critical for money-safety: prevents duplicate orders, fills, etc.
  */
 
-import type { Request, Response, NextFunction } from 'express';
 import { getRedisClient, type RedisClient } from '@ai-trader/shared';
+import type { NextFunction, Request, Response } from 'express';
 import { config } from '../config';
 
 interface IdempotencyRecord {

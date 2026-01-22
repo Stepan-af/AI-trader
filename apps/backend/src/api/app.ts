@@ -6,12 +6,12 @@
 import express, { type Express } from 'express';
 import { config } from './config';
 import {
-  globalRateLimiter,
-  writeRateLimiter,
-  validateContentType,
-  validateBodyExists,
-  notFoundHandler,
   errorHandler,
+  globalRateLimiter,
+  notFoundHandler,
+  validateBodyExists,
+  validateContentType,
+  writeRateLimiter,
 } from './middleware';
 import routes from './routes';
 
