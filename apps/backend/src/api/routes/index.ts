@@ -5,6 +5,7 @@
 
 import { Router } from 'express';
 import { healthCheck } from './health';
+import { initializeRiskRoute, validateRisk } from './risk';
 
 const router = Router();
 
@@ -12,6 +13,12 @@ const router = Router();
  * Health check endpoint (no auth required)
  */
 router.get('/health', healthCheck);
+
+/**
+ * Risk validation endpoint (internal service-to-service)
+ * Called by Execution Service before submitting orders
+ */
+router.post('/risk/validate', validateRisk);
 
 /**
  * Placeholder routes for future implementation
@@ -34,4 +41,5 @@ router.get('/health', healthCheck);
 // router.get('/portfolio/positions', authenticateJWT, ...);
 // router.get('/portfolio/balances', authenticateJWT, ...);
 
+export { initializeRiskRoute };
 export default router;

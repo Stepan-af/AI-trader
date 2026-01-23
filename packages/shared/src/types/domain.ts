@@ -245,3 +245,26 @@ export interface PortfolioEventOutbox {
   createdAt: Date;
   processedAt: Date | null;
 }
+
+// ============================================================================
+// Risk Domain
+// ============================================================================
+
+export interface RiskLimits {
+  id: string;
+  userId: string;
+  symbol: string | null; // null = global user limit
+  maxPositionSize: number;
+  maxExposureUsd: number;
+  maxDailyLossUsd: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SystemConfig {
+  id: string;
+  killSwitchActive: boolean;
+  killSwitchReason: string | null;
+  killSwitchActivatedAt: Date | null;
+  updatedAt: Date;
+}
