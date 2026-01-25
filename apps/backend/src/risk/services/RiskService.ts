@@ -4,7 +4,12 @@
  * Implements position size limits, exposure checks, and version-based validation per ARCHITECTURE.md
  */
 
-import { getRedisClient, type RedisClient, type RiskValidationRequest, type RiskValidationResponse } from '@ai-trader/shared';
+import {
+  getRedisClient,
+  type RedisClient,
+  type RiskValidationRequest,
+  type RiskValidationResponse,
+} from '@ai-trader/shared';
 import type { Pool } from 'pg';
 import { RiskRepository } from '../repositories/RiskRepository';
 
@@ -35,7 +40,7 @@ export class RiskService {
 
   constructor(pool: Pool) {
     this.riskRepository = new RiskRepository(pool);
-    this.redis = getRedisClient() as RedisClient;
+    this.redis = getRedisClient();
   }
 
   /**
@@ -128,13 +133,13 @@ export class RiskService {
    * Clear all risk approval cache entries
    * Per ARCHITECTURE.md: Manual cache invalidation (admin only)
    * Use cases: Risk limits changed by admin, debugging cache issues
-   * 
+   *
    * @returns Number of cache entries cleared
    */
   async clearCache(): Promise<number> {
     const pattern = 'risk:approval:*';
     const keys = await this.redis.keys(pattern);
-    
+
     if (keys.length === 0) {
       return 0;
     }

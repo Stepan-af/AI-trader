@@ -9,7 +9,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/unbound-method */
 
-import type { RedisClient, RiskLimits, RiskValidationRequest, RiskValidationResponse, SystemConfig } from '@ai-trader/shared';
+import type {
+  RedisClient,
+  RiskLimits,
+  RiskValidationRequest,
+  RiskValidationResponse,
+  SystemConfig,
+} from '@ai-trader/shared';
 import { jest } from '@jest/globals';
 import type { Pool } from 'pg';
 import type { RiskRepository } from '../../repositories/RiskRepository';
@@ -53,7 +59,7 @@ describe('RiskService', () => {
     service['riskRepository'] = mockRiskRepository;
     // @ts-expect-error - Replacing private property for testing
     service['redis'] = redisMock;
-    
+
     // Default Redis behavior: cache miss (returns null)
     redisGetMock.mockResolvedValue(null);
     redisSetexMock.mockResolvedValue('OK');
@@ -321,7 +327,7 @@ describe('RiskService', () => {
 
       // First request with version 1
       await service.validateRisk(baseRequest);
-      
+
       // @ts-expect-error - Accessing mock internals
       const firstCacheKey = redisSetexMock.mock.calls[0][0] as string;
 
@@ -332,7 +338,7 @@ describe('RiskService', () => {
       // Second request with version 2
       const request2 = { ...baseRequest, positionVersion: 2 };
       await service.validateRisk(request2);
-      
+
       // @ts-expect-error - Accessing mock internals
       const secondCacheKey = redisSetexMock.mock.calls[0][0] as string;
 
