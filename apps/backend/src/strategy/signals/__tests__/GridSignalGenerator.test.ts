@@ -111,9 +111,7 @@ describe('GridSignalGenerator', () => {
         risk: { maxPositionSize: 1000 },
       };
 
-      expect(() => generator.generateSignal(config, [], new Date())).toThrow(
-        'Grid config missing',
-      );
+      expect(() => generator.generateSignal(config, [], new Date())).toThrow('Grid config missing');
     });
 
     it('should be deterministic', () => {

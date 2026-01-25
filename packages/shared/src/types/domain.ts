@@ -285,3 +285,19 @@ export interface SystemConfig {
   killSwitchActivatedAt: Date | null;
   updatedAt: Date;
 }
+
+// ============================================================================
+// Kill Switch Domain (Redis-based)
+// ============================================================================
+
+export type KillSwitchReason =
+  | 'manual' // Admin manually activated
+  | 'risk_service_down' // Auto-triggered by Risk Service downtime
+  | 'system_error'; // Auto-triggered by critical system error
+
+export interface KillSwitchState {
+  active: boolean;
+  reason: KillSwitchReason | null;
+  activatedAt: Date | null;
+  activatedBy: string | null; // userId or 'system' for auto-trigger
+}

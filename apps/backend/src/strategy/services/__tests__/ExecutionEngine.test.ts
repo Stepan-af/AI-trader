@@ -5,6 +5,7 @@
 
 import type { Strategy } from '@ai-trader/shared';
 import type { Pool, PoolClient } from 'pg';
+import type { KillSwitchService } from '../../../execution/services/KillSwitchService';
 import type { OrderService } from '../../../execution/services/OrderService';
 import type { CandleRepository } from '../../repositories/CandleRepository';
 import type { StrategyRepository } from '../../repositories/StrategyRepository';
@@ -13,6 +14,7 @@ import { ExecutionEngine } from '../ExecutionEngine';
 describe('ExecutionEngine', () => {
   let pool: jest.Mocked<Pool>;
   let orderService: jest.Mocked<OrderService>;
+  let killSwitchService: jest.Mocked<KillSwitchService>;
   let engine: ExecutionEngine;
   let mockClient: jest.Mocked<PoolClient>;
   let mockStrategyRepo: jest.Mocked<StrategyRepository>;
@@ -35,8 +37,17 @@ describe('ExecutionEngine', () => {
       createOrder: jest.fn(),
     } as unknown as jest.Mocked<OrderService>;
 
+    // Mock KillSwitchService
+    killSwitchService = {
+      checkAndThrow: jest.fn().mockResolvedValue(undefined),
+      isActive: jest.fn().mockResolvedValue(false),
+      getState: jest.fn(),
+      activate: jest.fn(),
+      deactivate: jest.fn(),
+    } as unknown as jest.Mocked<KillSwitchService>;
+
     // Create engine instance
-    engine = new ExecutionEngine(pool, orderService);
+    engine = new ExecutionEngine(pool, orderService, killSwitchService);
 
     // Access internal repositories via type assertion
     mockStrategyRepo = (engine as any).strategyRepo as jest.Mocked<StrategyRepository>;
@@ -49,6 +60,52 @@ describe('ExecutionEngine', () => {
   });
 
   describe('startStrategy', () => {
+    it('should check kill switch before starting strategy', async () => {
+      const strategyId = 'strat-1';
+      const userId = 'user-1';
+
+      const mockStrategy: Strategy = {
+        id: strategyId,
+        userId,
+        status: 'STOPPED',
+        config: {
+          name: 'Test',
+          type: 'DCA',
+          symbol: 'BTCUSDT',
+          timeframe: '1m',
+          dca: { intervalSeconds: 60, amountPerOrder: 100 },
+          risk: { maxPositionSize: 1000 },
+        },
+        mode: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const startingStrategy: Strategy = { ...mockStrategy, status: 'STARTING' };
+
+      mockStrategyRepo.findById.mockResolvedValue(mockStrategy);
+      mockStrategyRepo.updateStatus.mockResolvedValue(startingStrategy);
+
+      await engine.startStrategy(strategyId, userId);
+
+      expect(killSwitchService.checkAndThrow).toHaveBeenCalled();
+    });
+
+    it('should reject if kill switch is active', async () => {
+      const strategyId = 'strat-1';
+      const userId = 'user-1';
+
+      killSwitchService.checkAndThrow.mockRejectedValue(
+        new Error('Emergency stop is active')
+      );
+
+      await expect(engine.startStrategy(strategyId, userId)).rejects.toThrow(
+        'Emergency stop is active'
+      );
+
+      expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+    });
+
     it('should transition from STOPPED to STARTING then RUNNING', async () => {
       const strategyId = 'strat-1';
       const userId = 'user-1';
@@ -107,7 +164,7 @@ describe('ExecutionEngine', () => {
       mockStrategyRepo.findById.mockResolvedValue(mockStrategy);
 
       await expect(engine.startStrategy(strategyId, userId)).rejects.toThrow(
-        'Cannot start strategy in RUNNING status',
+        'Cannot start strategy in RUNNING status'
       );
 
       expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
@@ -201,7 +258,7 @@ describe('ExecutionEngine', () => {
       mockStrategyRepo.findById.mockResolvedValue(mockStrategy);
 
       await expect(engine.stopStrategy(strategyId, userId)).rejects.toThrow(
-        'Cannot stop strategy in STOPPED status',
+        'Cannot stop strategy in STOPPED status'
       );
     });
   });

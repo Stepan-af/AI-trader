@@ -21,7 +21,7 @@ export class CandleRepository {
     symbol: string,
     timeframe: Timeframe,
     limit: number,
-    client?: PoolClient,
+    client?: PoolClient
   ): Promise<Candle[]> {
     const db = client ?? this.pool;
 
@@ -43,7 +43,7 @@ export class CandleRepository {
         ORDER BY timestamp DESC
         LIMIT $3
       `,
-      [symbol, timeframe, limit],
+      [symbol, timeframe, limit]
     );
 
     return result.rows.map((row) => ({
@@ -68,7 +68,7 @@ export class CandleRepository {
     timeframe: Timeframe,
     startTime: Date,
     endTime: Date,
-    client?: PoolClient,
+    client?: PoolClient
   ): Promise<Candle[]> {
     const db = client ?? this.pool;
 
@@ -86,13 +86,13 @@ export class CandleRepository {
       `
         SELECT id, symbol, timeframe, timestamp, open, high, low, close, volume
         FROM candles
-        WHERE symbol = $1 
+        WHERE symbol = $1
           AND timeframe = $2
           AND timestamp >= $3
           AND timestamp < $4
         ORDER BY timestamp ASC
       `,
-      [symbol, timeframe, startTime, endTime],
+      [symbol, timeframe, startTime, endTime]
     );
 
     return result.rows.map((row) => ({

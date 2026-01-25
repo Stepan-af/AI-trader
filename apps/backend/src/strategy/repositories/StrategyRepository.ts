@@ -155,11 +155,7 @@ export class StrategyRepository {
    * Update strategy status only
    * Convenience method for status transitions
    */
-  async updateStatus(
-    id: string,
-    status: StrategyStatus,
-    client?: PoolClient,
-  ): Promise<Strategy> {
+  async updateStatus(id: string, status: StrategyStatus, client?: PoolClient): Promise<Strategy> {
     return this.update({ id, status }, client);
   }
 

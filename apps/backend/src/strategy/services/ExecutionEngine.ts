@@ -4,13 +4,9 @@
  * Per ARCHITECTURE.md: "Strategies are pure functions over candle data"
  */
 
-import type {
-  Candle,
-  Strategy,
-  StrategyConfig,
-  TradingSignal,
-} from '@ai-trader/shared';
+import type { Candle, Strategy, StrategyConfig, TradingSignal } from '@ai-trader/shared';
 import type { Pool } from 'pg';
+import type { KillSwitchService } from '../../execution/services/KillSwitchService';
 import type { OrderService } from '../../execution/services/OrderService';
 import { CandleRepository } from '../repositories/CandleRepository';
 import { StrategyRepository } from '../repositories/StrategyRepository';
@@ -37,6 +33,7 @@ export class ExecutionEngine {
   constructor(
     private readonly pool: Pool,
     private readonly orderService: OrderService,
+    private readonly killSwitchService: KillSwitchService
   ) {
     this.strategyRepo = new StrategyRepository(pool);
     this.candleRepo = new CandleRepository(pool);
@@ -53,6 +50,7 @@ export class ExecutionEngine {
    * Start a strategy
    * Transitions: STOPPED → STARTING → RUNNING
    * Validates health checks before starting
+   * Per ADR-011, ADR-012: Blocks start if kill switch is active
    */
   async startStrategy(strategyId: string, userId: string): Promise<Strategy> {
     const client = await this.pool.connect();
@@ -60,7 +58,10 @@ export class ExecutionEngine {
     try {
       await client.query('BEGIN');
 
-      // 1. Load strategy
+      // 1. Check kill switch (per ADR-011: system-wide check)
+      await this.killSwitchService.checkAndThrow();
+
+      // 2. Load strategy
       const strategy = await this.strategyRepo.findById(strategyId, client);
       if (!strategy) {
         throw new Error(`Strategy ${strategyId} not found`);
@@ -70,27 +71,23 @@ export class ExecutionEngine {
         throw new Error(`Unauthorized: Strategy ${strategyId} does not belong to user ${userId}`);
       }
 
-      // 2. Validate current status
+      // 3. Validate current status
       if (strategy.status !== 'STOPPED' && strategy.status !== 'DRAFT') {
         throw new Error(`Cannot start strategy in ${strategy.status} status`);
       }
 
-      // 3. Health checks
+      // 4. Health checks
       const healthCheck = await this.performHealthChecks(userId);
       if (!healthCheck.portfolioHealthy || !healthCheck.riskServiceHealthy) {
         throw new Error(`Health check failed: ${healthCheck.reason}`);
       }
 
-      // 4. Transition to STARTING
-      const startingStrategy = await this.strategyRepo.updateStatus(
-        strategyId,
-        'STARTING',
-        client,
-      );
+      // 5. Transition to STARTING
+      const startingStrategy = await this.strategyRepo.updateStatus(strategyId, 'STARTING', client);
 
       await client.query('COMMIT');
 
-      // 5. Async: Transition to RUNNING after initialization
+      // 6. Async: Transition to RUNNING after initialization
       // For MVP: Immediate transition (no async init needed)
       setImmediate(() => {
         void (async (): Promise<void> => {
@@ -138,11 +135,7 @@ export class ExecutionEngine {
       }
 
       // 3. Transition to STOPPING
-      const stoppingStrategy = await this.strategyRepo.updateStatus(
-        strategyId,
-        'STOPPING',
-        client,
-      );
+      const stoppingStrategy = await this.strategyRepo.updateStatus(strategyId, 'STOPPING', client);
 
       await client.query('COMMIT');
 
@@ -194,7 +187,7 @@ export class ExecutionEngine {
     const candles = await this.candleRepo.getLatestCandles(
       strategy.config.symbol,
       strategy.config.timeframe,
-      100, // Fetch enough for technical indicators
+      100 // Fetch enough for technical indicators
     );
 
     // 4. Generate signal
@@ -215,7 +208,7 @@ export class ExecutionEngine {
   private generateSignal(
     config: StrategyConfig,
     candles: Candle[],
-    timestamp: Date,
+    timestamp: Date
   ): TradingSignal {
     const generator = this.signalGenerators.get(config.type);
     if (!generator) {
