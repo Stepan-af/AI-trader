@@ -1,19 +1,20 @@
 /**
  * Portfolio Service Tests
- * Tests position tracking, version increments, and event processing
+ * Tests position tracking, PnL calculation, version increments, and event processing
  */
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/unbound-method */
 
-import type { Position, PortfolioEventOutbox } from '@ai-trader/shared';
+import type { PortfolioEventOutbox, Position } from '@ai-trader/shared';
 import { jest } from '@jest/globals';
 import type { Pool, PoolClient } from 'pg';
-import type { PositionRepository } from '../../repositories/PositionRepository';
 import type { PortfolioEventOutboxRepository } from '../../repositories/PortfolioEventOutboxRepository';
+import type { PositionRepository } from '../../repositories/PositionRepository';
 import { PortfolioService } from '../PortfolioService';
 
 // Mock dependencies
@@ -80,7 +81,7 @@ describe('PortfolioService', () => {
           symbol: 'BTCUSDT',
           orderId: 'order-1',
           fillId: 'fill-1',
-          data: { side: 'BUY', quantity: 0.01, price: 50000 },
+          data: { side: 'BUY', quantity: 0.01, price: 50000, fee: 0.5, feeAsset: 'USDT' },
           createdAt: new Date(),
           processedAt: null,
         },
@@ -91,7 +92,7 @@ describe('PortfolioService', () => {
           symbol: 'BTCUSDT',
           orderId: 'order-2',
           fillId: 'fill-2',
-          data: { side: 'BUY', quantity: 0.02, price: 51000 },
+          data: { side: 'BUY', quantity: 0.02, price: 51000, fee: 1.0, feeAsset: 'USDT' },
           createdAt: new Date(),
           processedAt: null,
         },
@@ -105,8 +106,11 @@ describe('PortfolioService', () => {
         symbol: 'BTCUSDT',
         quantity: 0.01,
         avgEntryPrice: 50000,
+        realizedPnl: 0,
+        totalFees: 0.5,
         version: 1,
         updatedAt: new Date(),
+        dataAsOfTimestamp: new Date(),
       });
 
       const processed = await service.processOutboxEvents();
@@ -129,7 +133,7 @@ describe('PortfolioService', () => {
   });
 
   describe('fill event processing', () => {
-    it('should create new position on first BUY fill', async () => {
+    it('should create new position on first BUY fill with fees', async () => {
       const event: PortfolioEventOutbox = {
         id: 'event-1',
         eventType: 'FILL_PROCESSED',
@@ -137,7 +141,7 @@ describe('PortfolioService', () => {
         symbol: 'BTCUSDT',
         orderId: 'order-1',
         fillId: 'fill-1',
-        data: { side: 'BUY', quantity: 0.01, price: 50000 },
+        data: { side: 'BUY', quantity: 0.01, price: 50000, fee: 0.5, feeAsset: 'USDT' },
         createdAt: new Date(),
         processedAt: null,
       };
@@ -150,8 +154,11 @@ describe('PortfolioService', () => {
         symbol: 'BTCUSDT',
         quantity: 0.01,
         avgEntryPrice: 50000,
+        realizedPnl: 0,
+        totalFees: 0.5,
         version: 1,
         updatedAt: new Date(),
+        dataAsOfTimestamp: new Date(),
       });
 
       await service.processOutboxEvents();
@@ -162,6 +169,8 @@ describe('PortfolioService', () => {
           symbol: 'BTCUSDT',
           quantity: 0.01,
           avgEntryPrice: 50000,
+          realizedPnl: 0,
+          totalFees: 0.5,
         },
         mockClient
       );
@@ -176,7 +185,7 @@ describe('PortfolioService', () => {
         symbol: 'BTCUSDT',
         orderId: 'order-1',
         fillId: 'fill-1',
-        data: { side: 'SELL', quantity: 0.01, price: 50000 },
+        data: { side: 'SELL', quantity: 0.01, price: 50000, fee: 0.5, feeAsset: 'USDT' },
         createdAt: new Date(),
         processedAt: null,
       };
@@ -189,8 +198,11 @@ describe('PortfolioService', () => {
         symbol: 'BTCUSDT',
         quantity: -0.01,
         avgEntryPrice: 50000,
+        realizedPnl: 0,
+        totalFees: 0.5,
         version: 1,
         updatedAt: new Date(),
+        dataAsOfTimestamp: new Date(),
       });
 
       await service.processOutboxEvents();
@@ -201,6 +213,8 @@ describe('PortfolioService', () => {
           symbol: 'BTCUSDT',
           quantity: -0.01,
           avgEntryPrice: 50000,
+          realizedPnl: 0,
+          totalFees: 0.5,
         },
         mockClient
       );
@@ -213,8 +227,11 @@ describe('PortfolioService', () => {
         symbol: 'BTCUSDT',
         quantity: 0.01,
         avgEntryPrice: 50000,
+        realizedPnl: 0,
+        totalFees: 0.5,
         version: 1,
         updatedAt: new Date(),
+        dataAsOfTimestamp: new Date(),
       };
 
       const event: PortfolioEventOutbox = {
@@ -224,7 +241,7 @@ describe('PortfolioService', () => {
         symbol: 'BTCUSDT',
         orderId: 'order-1',
         fillId: 'fill-1',
-        data: { side: 'BUY', quantity: 0.01, price: 51000 },
+        data: { side: 'BUY', quantity: 0.01, price: 51000, fee: 0.5, feeAsset: 'USDT' },
         createdAt: new Date(),
         processedAt: null,
       };
@@ -235,6 +252,7 @@ describe('PortfolioService', () => {
         ...existingPosition,
         quantity: 0.02,
         avgEntryPrice: 50500, // (0.01 * 50000 + 0.01 * 51000) / 0.02
+        totalFees: 1.0, // 0.5 + 0.5
         version: 2,
       });
 
@@ -245,6 +263,8 @@ describe('PortfolioService', () => {
           id: 'pos-1',
           quantity: 0.02,
           avgEntryPrice: 50500,
+          realizedPnl: 0, // No PnL on BUY
+          totalFees: 1.0,
           expectedVersion: 1,
         },
         mockClient
@@ -252,15 +272,18 @@ describe('PortfolioService', () => {
       expect(createPositionMock).not.toHaveBeenCalled();
     });
 
-    it('should reduce position on SELL fill without changing avg price', async () => {
+    it('should calculate realized PnL on SELL and keep avg price unchanged', async () => {
       const existingPosition: Position = {
         id: 'pos-1',
         userId: 'user-1',
         symbol: 'BTCUSDT',
         quantity: 0.02,
         avgEntryPrice: 50000,
+        realizedPnl: 0,
+        totalFees: 1.0,
         version: 1,
         updatedAt: new Date(),
+        dataAsOfTimestamp: new Date(),
       };
 
       const event: PortfolioEventOutbox = {
@@ -270,7 +293,7 @@ describe('PortfolioService', () => {
         symbol: 'BTCUSDT',
         orderId: 'order-1',
         fillId: 'fill-1',
-        data: { side: 'SELL', quantity: 0.01, price: 51000 },
+        data: { side: 'SELL', quantity: 0.01, price: 52000, fee: 0.5, feeAsset: 'USDT' },
         createdAt: new Date(),
         processedAt: null,
       };
@@ -281,6 +304,8 @@ describe('PortfolioService', () => {
         ...existingPosition,
         quantity: 0.01,
         avgEntryPrice: 50000, // Unchanged on SELL
+        realizedPnl: 20.0, // (52000 - 50000) * 0.01 = 20
+        totalFees: 1.5, // 1.0 + 0.5
         version: 2,
       });
 
@@ -291,6 +316,8 @@ describe('PortfolioService', () => {
           id: 'pos-1',
           quantity: 0.01,
           avgEntryPrice: 50000, // Should not change on SELL
+          realizedPnl: 20.0, // (52000 - 50000) * 0.01
+          totalFees: 1.5,
           expectedVersion: 1,
         },
         mockClient
@@ -328,7 +355,7 @@ describe('PortfolioService', () => {
         symbol: 'BTCUSDT',
         orderId: 'order-1',
         fillId: 'fill-1',
-        data: { side: 'BUY', quantity: 0.01, price: 50000 },
+        data: { side: 'BUY', quantity: 0.01, price: 50000, fee: 0.5, feeAsset: 'USDT' },
         createdAt: new Date(),
         processedAt: null,
       };
@@ -344,6 +371,149 @@ describe('PortfolioService', () => {
     });
   });
 
+  describe('PnL calculation', () => {
+    it('should calculate realized PnL correctly on profitable SELL', async () => {
+      const existingPosition: Position = {
+        id: 'pos-1',
+        userId: 'user-1',
+        symbol: 'BTCUSDT',
+        quantity: 0.1,
+        avgEntryPrice: 50000,
+        realizedPnl: 0,
+        totalFees: 5.0,
+        version: 1,
+        updatedAt: new Date(),
+        dataAsOfTimestamp: new Date(),
+      };
+
+      // Sell at profit: (55000 - 50000) * 0.05 = 250
+      const event: PortfolioEventOutbox = {
+        id: 'event-1',
+        eventType: 'FILL_PROCESSED',
+        userId: 'user-1',
+        symbol: 'BTCUSDT',
+        orderId: 'order-1',
+        fillId: 'fill-1',
+        data: { side: 'SELL', quantity: 0.05, price: 55000, fee: 2.5, feeAsset: 'USDT' },
+        createdAt: new Date(),
+        processedAt: null,
+      };
+
+      getUnprocessedEventsMock.mockResolvedValue([event]);
+      findByUserAndSymbolMock.mockResolvedValue(existingPosition);
+      updatePositionMock.mockResolvedValue({
+        ...existingPosition,
+        quantity: 0.05,
+        realizedPnl: 250.0,
+        totalFees: 7.5,
+        version: 2,
+      });
+
+      await service.processOutboxEvents();
+
+      expect(updatePositionMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          realizedPnl: 250.0,
+        }),
+        mockClient
+      );
+    });
+
+    it('should calculate negative realized PnL on losing SELL', async () => {
+      const existingPosition: Position = {
+        id: 'pos-1',
+        userId: 'user-1',
+        symbol: 'BTCUSDT',
+        quantity: 0.1,
+        avgEntryPrice: 50000,
+        realizedPnl: 0,
+        totalFees: 5.0,
+        version: 1,
+        updatedAt: new Date(),
+        dataAsOfTimestamp: new Date(),
+      };
+
+      // Sell at loss: (48000 - 50000) * 0.05 = -100
+      const event: PortfolioEventOutbox = {
+        id: 'event-1',
+        eventType: 'FILL_PROCESSED',
+        userId: 'user-1',
+        symbol: 'BTCUSDT',
+        orderId: 'order-1',
+        fillId: 'fill-1',
+        data: { side: 'SELL', quantity: 0.05, price: 48000, fee: 2.4, feeAsset: 'USDT' },
+        createdAt: new Date(),
+        processedAt: null,
+      };
+
+      getUnprocessedEventsMock.mockResolvedValue([event]);
+      findByUserAndSymbolMock.mockResolvedValue(existingPosition);
+      updatePositionMock.mockResolvedValue({
+        ...existingPosition,
+        quantity: 0.05,
+        realizedPnl: -100.0,
+        totalFees: 7.4,
+        version: 2,
+      });
+
+      await service.processOutboxEvents();
+
+      expect(updatePositionMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          realizedPnl: -100.0,
+        }),
+        mockClient
+      );
+    });
+
+    it('should accumulate realized PnL across multiple sells', async () => {
+      const existingPosition: Position = {
+        id: 'pos-1',
+        userId: 'user-1',
+        symbol: 'BTCUSDT',
+        quantity: 0.05,
+        avgEntryPrice: 50000,
+        realizedPnl: 100.0, // Already has 100 realized PnL
+        totalFees: 5.0,
+        version: 1,
+        updatedAt: new Date(),
+        dataAsOfTimestamp: new Date(),
+      };
+
+      // Second sell: (51000 - 50000) * 0.02 = 20
+      const event: PortfolioEventOutbox = {
+        id: 'event-1',
+        eventType: 'FILL_PROCESSED',
+        userId: 'user-1',
+        symbol: 'BTCUSDT',
+        orderId: 'order-1',
+        fillId: 'fill-1',
+        data: { side: 'SELL', quantity: 0.02, price: 51000, fee: 1.0, feeAsset: 'USDT' },
+        createdAt: new Date(),
+        processedAt: null,
+      };
+
+      getUnprocessedEventsMock.mockResolvedValue([event]);
+      findByUserAndSymbolMock.mockResolvedValue(existingPosition);
+      updatePositionMock.mockResolvedValue({
+        ...existingPosition,
+        quantity: 0.03,
+        realizedPnl: 120.0, // 100 + 20
+        totalFees: 6.0,
+        version: 2,
+      });
+
+      await service.processOutboxEvents();
+
+      expect(updatePositionMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          realizedPnl: 120.0,
+        }),
+        mockClient
+      );
+    });
+  });
+
   describe('average entry price calculation', () => {
     it('should calculate weighted average on multiple BUY fills', async () => {
       // First fill: BUY 0.01 @ 50000
@@ -353,8 +523,11 @@ describe('PortfolioService', () => {
         symbol: 'BTCUSDT',
         quantity: 0.01,
         avgEntryPrice: 50000,
+        realizedPnl: 0,
+        totalFees: 0.5,
         version: 1,
         updatedAt: new Date(),
+        dataAsOfTimestamp: new Date(),
       };
 
       // Second fill: BUY 0.02 @ 51000
@@ -366,7 +539,7 @@ describe('PortfolioService', () => {
         symbol: 'BTCUSDT',
         orderId: 'order-1',
         fillId: 'fill-1',
-        data: { side: 'BUY', quantity: 0.02, price: 51000 },
+        data: { side: 'BUY', quantity: 0.02, price: 51000, fee: 1.0, feeAsset: 'USDT' },
         createdAt: new Date(),
         processedAt: null,
       };
@@ -377,6 +550,7 @@ describe('PortfolioService', () => {
         ...position1,
         quantity: 0.03,
         avgEntryPrice: 50666.666666666664,
+        totalFees: 1.5,
         version: 2,
       });
 
@@ -386,6 +560,54 @@ describe('PortfolioService', () => {
         expect.objectContaining({
           quantity: 0.03,
           avgEntryPrice: expect.closeTo(50666.67, 0.01),
+          totalFees: 1.5,
+        }),
+        mockClient
+      );
+    });
+  });
+
+  describe('fee tracking', () => {
+    it('should accumulate fees across fills', async () => {
+      const existingPosition: Position = {
+        id: 'pos-1',
+        userId: 'user-1',
+        symbol: 'BTCUSDT',
+        quantity: 0.1,
+        avgEntryPrice: 50000,
+        realizedPnl: 0,
+        totalFees: 5.0,
+        version: 1,
+        updatedAt: new Date(),
+        dataAsOfTimestamp: new Date(),
+      };
+
+      const event: PortfolioEventOutbox = {
+        id: 'event-1',
+        eventType: 'FILL_PROCESSED',
+        userId: 'user-1',
+        symbol: 'BTCUSDT',
+        orderId: 'order-1',
+        fillId: 'fill-1',
+        data: { side: 'BUY', quantity: 0.01, price: 50000, fee: 0.25, feeAsset: 'USDT' },
+        createdAt: new Date(),
+        processedAt: null,
+      };
+
+      getUnprocessedEventsMock.mockResolvedValue([event]);
+      findByUserAndSymbolMock.mockResolvedValue(existingPosition);
+      updatePositionMock.mockResolvedValue({
+        ...existingPosition,
+        quantity: 0.11,
+        totalFees: 5.25, // 5.0 + 0.25
+        version: 2,
+      });
+
+      await service.processOutboxEvents();
+
+      expect(updatePositionMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          totalFees: 5.25,
         }),
         mockClient
       );

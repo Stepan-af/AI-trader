@@ -92,8 +92,11 @@ export interface Position {
   symbol: string;
   quantity: number; // Can be negative for short positions (future)
   avgEntryPrice: number;
+  realizedPnl: number; // Cumulative realized PnL from closed positions
+  totalFees: number; // Cumulative fees paid
   version: number; // For optimistic locking
   updatedAt: Date;
+  dataAsOfTimestamp: Date; // For staleness detection
 }
 
 // ============================================================================

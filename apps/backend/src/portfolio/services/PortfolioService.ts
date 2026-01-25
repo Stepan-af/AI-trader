@@ -6,13 +6,15 @@
 
 import type { PortfolioEventOutbox } from '@ai-trader/shared';
 import type { Pool, PoolClient } from 'pg';
-import { PositionRepository } from '../repositories/PositionRepository';
 import { PortfolioEventOutboxRepository } from '../repositories/PortfolioEventOutboxRepository';
+import { PositionRepository } from '../repositories/PositionRepository';
 
 interface FillProcessedData {
   side: 'BUY' | 'SELL';
   quantity: number;
   price: number;
+  fee: number;
+  feeAsset: string;
 }
 
 export class PortfolioService {
@@ -27,7 +29,7 @@ export class PortfolioService {
   /**
    * Process all unprocessed portfolio events from outbox
    * Called periodically to consume fill events
-   * 
+   *
    * @returns Number of events processed
    */
   async processOutboxEvents(): Promise<number> {
@@ -71,12 +73,14 @@ export class PortfolioService {
 
   /**
    * Process FILL_PROCESSED event
-   * Updates position quantity based on fill side
+   * Updates position quantity, calculates realized PnL, tracks fees
+   *
+   * PnL Calculation (per ARCHITECTURE.md):
+   * - SELL: Realized PnL = (sell_price - avg_entry_price) × quantity_sold
+   * - BUY: No realized PnL (only updates position)
+   * - Fees: Accumulated in total_fees
    */
-  private async processFillEvent(
-    event: PortfolioEventOutbox,
-    client: PoolClient
-  ): Promise<void> {
+  private async processFillEvent(event: PortfolioEventOutbox, client: PoolClient): Promise<void> {
     const fillData = event.data as unknown as FillProcessedData;
 
     // Get current position or create new one
@@ -94,6 +98,8 @@ export class PortfolioService {
           symbol: event.symbol,
           quantity: fillData.side === 'BUY' ? fillData.quantity : -fillData.quantity,
           avgEntryPrice: fillData.price,
+          realizedPnl: 0, // New position has no realized PnL yet
+          totalFees: fillData.fee, // Start tracking fees
         },
         client
       );
@@ -106,12 +112,22 @@ export class PortfolioService {
       // For BUY: weighted average
       // For SELL: keep existing avg_entry_price (we're reducing position)
       let newAvgEntryPrice = position.avgEntryPrice;
+      let realizedPnl = position.realizedPnl;
 
       if (fillData.side === 'BUY') {
+        // Weighted average calculation
         const totalCost =
           position.quantity * position.avgEntryPrice + fillData.quantity * fillData.price;
         newAvgEntryPrice = totalCost / newQuantity;
+      } else {
+        // SELL: Calculate realized PnL
+        // PnL = (sell_price - avg_entry_price) × quantity_sold
+        const pnlFromThisFill = (fillData.price - position.avgEntryPrice) * fillData.quantity;
+        realizedPnl += pnlFromThisFill;
       }
+
+      // Accumulate fees
+      const totalFees = position.totalFees + fillData.fee;
 
       // Update with optimistic locking
       position = await this.positionRepository.update(
@@ -119,6 +135,8 @@ export class PortfolioService {
           id: position.id,
           quantity: newQuantity,
           avgEntryPrice: newAvgEntryPrice,
+          realizedPnl,
+          totalFees,
           expectedVersion: position.version,
         },
         client
