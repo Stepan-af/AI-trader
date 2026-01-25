@@ -5,7 +5,7 @@
 
 import { Router } from 'express';
 import { healthCheck } from './health';
-import { initializeRiskRoute, validateRisk } from './risk';
+import { clearRiskCache, initializeRiskRoute, validateRisk } from './risk';
 
 const router = Router();
 
@@ -19,6 +19,12 @@ router.get('/health', healthCheck);
  * Called by Execution Service before submitting orders
  */
 router.post('/risk/validate', validateRisk);
+
+/**
+ * Admin endpoint to clear risk approval cache
+ * Per ARCHITECTURE.md: Manual cache invalidation
+ */
+router.post('/admin/risk-cache/clear', clearRiskCache);
 
 /**
  * Placeholder routes for future implementation

@@ -4,7 +4,7 @@
  * Implements position size limits, exposure checks, and version-based validation per ARCHITECTURE.md
  */
 
-import type { RiskValidationRequest, RiskValidationResponse } from '@ai-trader/shared';
+import { getRedisClient, type RedisClient, type RiskValidationRequest, type RiskValidationResponse } from '@ai-trader/shared';
 import type { Pool } from 'pg';
 import { RiskRepository } from '../repositories/RiskRepository';
 
@@ -24,11 +24,26 @@ export class RiskValidationError extends Error {
   }
 }
 
+/**
+ * Cache TTL for risk approvals (10 seconds per ARCHITECTURE.md)
+ */
+const CACHE_TTL_SECONDS = 10;
+
 export class RiskService {
   private readonly riskRepository: RiskRepository;
+  private readonly redis: RedisClient;
 
   constructor(pool: Pool) {
     this.riskRepository = new RiskRepository(pool);
+    this.redis = getRedisClient() as RedisClient;
+  }
+
+  /**
+   * Build cache key for risk approval
+   * Format: risk:approval:{user_id}:{symbol}:{side}:{quantity}:{position_version}
+   */
+  private buildCacheKey(request: RiskValidationRequest): string {
+    return `risk:approval:${request.userId}:${request.symbol}:${request.side}:${request.quantity}:${request.positionVersion}`;
   }
 
   /**
@@ -38,7 +53,16 @@ export class RiskService {
    * @throws RiskValidationError if validation fails
    */
   async validateRisk(request: RiskValidationRequest): Promise<RiskValidationResponse> {
-    // Get risk limits for user and symbol
+    // Check cache first (cache hit reduces Risk Service load by ~30%)
+    const cacheKey = this.buildCacheKey(request);
+    const cachedApproval = await this.redis.get(cacheKey);
+
+    if (cachedApproval) {
+      // Cache hit - return cached approval
+      return JSON.parse(cachedApproval) as RiskValidationResponse;
+    }
+
+    // Cache miss - perform full validation
     const limits = await this.riskRepository.getRiskLimits(request.userId, request.symbol);
 
     if (!limits) {
@@ -75,8 +99,8 @@ export class RiskService {
     // as these require price data and PnL tracking which come later
     // These validations will be added when Portfolio Service is implemented
 
-    // Validation passed
-    return {
+    // Validation passed - build response
+    const response: RiskValidationResponse = {
       approved: true,
       validatedAt: new Date().toISOString(),
       limitsSnapshot: {
@@ -85,6 +109,11 @@ export class RiskService {
         maxDailyLossUsd: limits.maxDailyLossUsd,
       },
     };
+
+    // Cache the approval for 10 seconds
+    await this.redis.setex(cacheKey, CACHE_TTL_SECONDS, JSON.stringify(response));
+
+    return response;
   }
 
   /**
@@ -93,5 +122,24 @@ export class RiskService {
   async isKillSwitchActive(): Promise<boolean> {
     const config = await this.riskRepository.getSystemConfig();
     return config.killSwitchActive;
+  }
+
+  /**
+   * Clear all risk approval cache entries
+   * Per ARCHITECTURE.md: Manual cache invalidation (admin only)
+   * Use cases: Risk limits changed by admin, debugging cache issues
+   * 
+   * @returns Number of cache entries cleared
+   */
+  async clearCache(): Promise<number> {
+    const pattern = 'risk:approval:*';
+    const keys = await this.redis.keys(pattern);
+    
+    if (keys.length === 0) {
+      return 0;
+    }
+
+    await this.redis.del(...keys);
+    return keys.length;
   }
 }

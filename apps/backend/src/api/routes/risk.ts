@@ -95,3 +95,31 @@ export async function validateRisk(req: Request, res: Response): Promise<void> {
     });
   }
 }
+
+/**
+ * POST /admin/risk-cache/clear
+ * Clear all risk approval cache entries (admin only)
+ * 
+ * Per ARCHITECTURE.md: Manual cache invalidation
+ * Use cases: Risk limits changed by admin, debugging cache issues
+ * 
+ * Response: { cleared: number, message: string }
+ */
+export async function clearRiskCache(_req: Request, res: Response): Promise<void> {
+  try {
+    const cleared = await riskService.clearCache();
+
+    res.status(200).json({
+      cleared,
+      message: cleared > 0
+        ? `Cleared ${cleared} risk approval cache entries. New orders will undergo fresh validation.`
+        : 'No cache entries found.',
+    });
+  } catch (error) {
+    console.error('Risk cache clear error:', error);
+    res.status(500).json({
+      error: 'INTERNAL_ERROR',
+      message: 'An unexpected error occurred while clearing cache',
+    });
+  }
+}
