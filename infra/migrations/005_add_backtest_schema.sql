@@ -37,7 +37,7 @@ CREATE TABLE backtest.backtest_results (
     max_drawdown NUMERIC(10, 6) NOT NULL, -- Percentage (e.g., 0.15 = 15%)
     sharpe_ratio NUMERIC(10, 4) NULL, -- Can be NULL if not enough data
     completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT fk_backtest_run FOREIGN KEY (backtest_run_id) 
+    CONSTRAINT fk_backtest_run FOREIGN KEY (backtest_run_id)
         REFERENCES backtest.backtest_runs(id) ON DELETE CASCADE
 );
 

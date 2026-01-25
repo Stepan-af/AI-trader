@@ -126,7 +126,11 @@ export class BacktestService {
   /**
    * List backtests for a user
    */
-  async listBacktests(userId: string, limit = 50, offset = 0): Promise<import('@ai-trader/shared').BacktestRun[]> {
+  async listBacktests(
+    userId: string,
+    limit = 50,
+    offset = 0
+  ): Promise<import('@ai-trader/shared').BacktestRun[]> {
     return await this.backtestRepo.findRunsByUserId(userId, limit, offset);
   }
 

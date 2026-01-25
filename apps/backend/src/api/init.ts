@@ -10,6 +10,7 @@ import { FillRepository } from '../execution/repositories/FillRepository';
 import { OrderRepository } from '../execution/repositories/OrderRepository';
 import { KillSwitchService } from '../execution/services/KillSwitchService';
 import { OrderService } from '../execution/services/OrderService';
+import { HealthCheckService } from '../monitoring/HealthCheckService';
 import { PortfolioService } from '../portfolio/services/PortfolioService';
 import { ExecutionEngine } from '../strategy/services/ExecutionEngine';
 import { StrategyService } from '../strategy/services/StrategyService';
@@ -49,6 +50,7 @@ export async function initializeServices(): Promise<void> {
   const strategyService = new StrategyService(pool);
   const orderService = new OrderService(pool);
   const backtestService = new BacktestService(pool);
+  const healthCheckService = new HealthCheckService(pool);
 
   // Create execution engine
   const executionEngine = new ExecutionEngine(pool, orderService, killSwitchService);
@@ -62,6 +64,8 @@ export async function initializeServices(): Promise<void> {
     orderRepository,
     fillRepository,
     backtestService,
+    healthCheckService,
+    pool,
   });
 
   console.log('Services initialized successfully');

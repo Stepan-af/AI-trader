@@ -4,6 +4,7 @@
  */
 
 import express, { type Express } from 'express';
+import { metricsMiddleware } from '../monitoring';
 import { config } from './config';
 import {
   errorHandler,
@@ -26,6 +27,9 @@ export function createApp(): Express {
 
   // JSON body parser
   app.use(express.json());
+
+  // Metrics middleware (track all requests)
+  app.use(metricsMiddleware);
 
   // Global middleware
   app.use(globalRateLimiter);

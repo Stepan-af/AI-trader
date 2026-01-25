@@ -41,6 +41,8 @@ export function initializeRoutes(services: {
   orderRepository: import('../../execution/repositories/OrderRepository').OrderRepository;
   fillRepository: import('../../execution/repositories/FillRepository').FillRepository;
   backtestService: import('../../backtest/services/BacktestService').BacktestService;
+  healthCheckService: import('../../monitoring/HealthCheckService').HealthCheckService;
+  pool: import('pg').Pool;
 }): void {
   if (servicesInitialized) {
     throw new Error('Routes already initialized');
@@ -51,6 +53,7 @@ export function initializeRoutes(services: {
   const portfolioRoutes = require('./portfolio');
   const orderRoutes = require('./orders');
   const { createBacktestRoutes } = require('./backtests');
+  const { createMonitoringRoutes } = require('./monitoring');
 
   // Strategy routes
   router.get('/strategies', (req, res) =>
@@ -98,6 +101,9 @@ export function initializeRoutes(services: {
 
   // Backtest routes
   router.use('/backtests', createBacktestRoutes(services.backtestService));
+
+  // Monitoring routes (health checks and metrics)
+  router.use('/', createMonitoringRoutes(services.healthCheckService));
 
   servicesInitialized = true;
 }

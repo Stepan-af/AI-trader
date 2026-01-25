@@ -3,7 +3,12 @@
  * Data access layer for backtest.backtest_runs and backtest.backtest_results tables
  */
 
-import type { BacktestResult, BacktestRun, BacktestStatus, StrategyConfig } from '@ai-trader/shared';
+import type {
+  BacktestResult,
+  BacktestRun,
+  BacktestStatus,
+  StrategyConfig,
+} from '@ai-trader/shared';
 import type { Pool, PoolClient } from 'pg';
 
 interface BacktestRunRow {
@@ -64,7 +69,7 @@ export class BacktestRepository {
 
     const query = `
       INSERT INTO backtest.backtest_runs (
-        user_id, strategy_config, symbol, start_date, end_date, 
+        user_id, strategy_config, symbol, start_date, end_date,
         initial_balance, status
       )
       VALUES ($1, $2, $3, $4, $5, $6, 'PENDING')
@@ -140,7 +145,7 @@ export class BacktestRepository {
 
     const query = `
       UPDATE backtest.backtest_runs
-      SET 
+      SET
         status = $1,
         error_message = $2,
         completed_at = ${completedAt}
@@ -158,7 +163,10 @@ export class BacktestRepository {
   /**
    * Create backtest result
    */
-  async createResult(params: CreateBacktestResultParams, client?: PoolClient): Promise<BacktestResult> {
+  async createResult(
+    params: CreateBacktestResultParams,
+    client?: PoolClient
+  ): Promise<BacktestResult> {
     const db = client || this.pool;
 
     const query = `

@@ -3,9 +3,9 @@
  * Per API.md: POST /backtests, GET /backtests/:id
  */
 
+import type { BacktestRun } from '@ai-trader/shared';
 import { Router } from 'express';
 import type { BacktestService } from '../../backtest/services/BacktestService';
-import type { BacktestRun } from '@ai-trader/shared';
 
 export function createBacktestRoutes(backtestService: BacktestService): Router {
   const router = Router();
@@ -146,4 +146,3 @@ export function createBacktestRoutes(backtestService: BacktestService): Router {
 
   return router;
 }
-
