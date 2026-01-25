@@ -4,8 +4,8 @@
  */
 
 import type { Request, Response } from 'express';
-import type { OrderRepository } from '../../execution/repositories/OrderRepository';
 import type { FillRepository } from '../../execution/repositories/FillRepository';
+import type { OrderRepository } from '../../execution/repositories/OrderRepository';
 
 /**
  * GET /orders

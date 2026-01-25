@@ -71,8 +71,7 @@ export class PortfolioService {
 
     // Calculate overall staleness based on oldest position update
     const oldestTimestamp = positions.reduce(
-      (oldest, pos) =>
-        pos.dataAsOfTimestamp < oldest ? pos.dataAsOfTimestamp : oldest,
+      (oldest, pos) => (pos.dataAsOfTimestamp < oldest ? pos.dataAsOfTimestamp : oldest),
       positions[0].dataAsOfTimestamp
     );
 
@@ -113,10 +112,7 @@ export class PortfolioService {
     const positionsData = await this.getPositions(userId);
 
     // Calculate total realized PnL and fees
-    const totalRealizedPnl = positionsData.positions.reduce(
-      (sum, pos) => sum + pos.realizedPnl,
-      0
-    );
+    const totalRealizedPnl = positionsData.positions.reduce((sum, pos) => sum + pos.realizedPnl, 0);
 
     const totalUnrealizedPnl = positionsData.positions.reduce(
       (sum, pos) => sum + pos.unrealizedPnl,

@@ -4,6 +4,7 @@
  */
 
 import { createRedisClient } from '@ai-trader/shared';
+import { BacktestService } from '../backtest/services/BacktestService';
 import { createDatabasePool } from '../execution/database';
 import { FillRepository } from '../execution/repositories/FillRepository';
 import { OrderRepository } from '../execution/repositories/OrderRepository';
@@ -47,6 +48,7 @@ export async function initializeServices(): Promise<void> {
   const portfolioService = new PortfolioService(pool);
   const strategyService = new StrategyService(pool);
   const orderService = new OrderService(pool);
+  const backtestService = new BacktestService(pool);
 
   // Create execution engine
   const executionEngine = new ExecutionEngine(pool, orderService, killSwitchService);
@@ -59,6 +61,7 @@ export async function initializeServices(): Promise<void> {
     portfolioService,
     orderRepository,
     fillRepository,
+    backtestService,
   });
 
   console.log('Services initialized successfully');

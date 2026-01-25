@@ -4,9 +4,9 @@
  */
 
 import type { Request, Response } from 'express';
+import type { KillSwitchService } from '../../execution/services/KillSwitchService';
 import type { ExecutionEngine } from '../../strategy/services/ExecutionEngine';
 import type { StrategyService } from '../../strategy/services/StrategyService';
-import type { KillSwitchService } from '../../execution/services/KillSwitchService';
 
 /**
  * GET /strategies
@@ -63,8 +63,7 @@ export async function createStrategy(
   if (!name || !type || !symbol || !timeframe || !risk?.maxPositionSize) {
     res.status(400).json({
       error: 'VALIDATION_ERROR',
-      message:
-        'Missing required fields: name, type, symbol, timeframe, risk.maxPositionSize',
+      message: 'Missing required fields: name, type, symbol, timeframe, risk.maxPositionSize',
     });
     return;
   }

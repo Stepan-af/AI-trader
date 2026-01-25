@@ -40,6 +40,7 @@ export function initializeRoutes(services: {
   portfolioService: import('../../portfolio/services/PortfolioService').PortfolioService;
   orderRepository: import('../../execution/repositories/OrderRepository').OrderRepository;
   fillRepository: import('../../execution/repositories/FillRepository').FillRepository;
+  backtestService: import('../../backtest/services/BacktestService').BacktestService;
 }): void {
   if (servicesInitialized) {
     throw new Error('Routes already initialized');
@@ -49,6 +50,7 @@ export function initializeRoutes(services: {
   const strategyRoutes = require('./strategies');
   const portfolioRoutes = require('./portfolio');
   const orderRoutes = require('./orders');
+  const { createBacktestRoutes } = require('./backtests');
 
   // Strategy routes
   router.get('/strategies', (req, res) =>
@@ -88,15 +90,14 @@ export function initializeRoutes(services: {
   );
 
   // Order routes
-  router.get('/orders', (req, res) =>
-    orderRoutes.listOrders(req, res, services.orderRepository)
-  );
-  router.get('/orders/:id', (req, res) =>
-    orderRoutes.getOrder(req, res, services.orderRepository)
-  );
+  router.get('/orders', (req, res) => orderRoutes.listOrders(req, res, services.orderRepository));
+  router.get('/orders/:id', (req, res) => orderRoutes.getOrder(req, res, services.orderRepository));
   router.get('/orders/:id/fills', (req, res) =>
     orderRoutes.getOrderFills(req, res, services.fillRepository, services.orderRepository)
   );
+
+  // Backtest routes
+  router.use('/backtests', createBacktestRoutes(services.backtestService));
 
   servicesInitialized = true;
 }
