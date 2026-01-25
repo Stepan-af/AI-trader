@@ -69,6 +69,24 @@ export class PositionRepository {
   }
 
   /**
+   * Find all positions for a user
+   */
+  async findByUserId(userId: string): Promise<Position[]> {
+    const query = `
+      SELECT
+        id, user_id, symbol, quantity, avg_entry_price,
+        realized_pnl, total_fees, version, updated_at, data_as_of_timestamp
+      FROM portfolio.positions
+      WHERE user_id = $1
+      ORDER BY symbol ASC
+    `;
+
+    const result = await this.pool.query(query, [userId]);
+
+    return result.rows.map((row) => this.mapRowToPosition(row as PositionRow));
+  }
+
+  /**
    * Create new position with version = 1
    */
   async create(params: CreatePositionParams, client?: PoolClient): Promise<Position> {

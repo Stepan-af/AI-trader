@@ -5,32 +5,57 @@
 
 import { createApp } from './app';
 import { config } from './config';
+import { initializeServices } from './init';
 
-const app = createApp();
+async function start() {
+  // Initialize all services and wire routes
+  await initializeServices();
 
-const server = app.listen(config.port, () => {
-  console.log(`API Gateway listening on port ${config.port}`);
-  console.log(`Environment: ${config.nodeEnv}`);
-  console.log(`API base URL: http://localhost:${config.port}${config.apiPrefix}`);
-});
+  // Create and start Express app
+  const app = createApp();
 
-/**
- * Graceful shutdown
- */
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully...');
-  server.close(() => {
-    console.log('Server closed');
-    process.exit(0);
+  const server = app.listen(config.port, () => {
+    /* eslint-disable no-console */
+    console.log(`API Gateway listening on port ${config.port}`);
+    console.log(`Environment: ${config.nodeEnv}`);
+    console.log(`API base URL: http://localhost:${config.port}${config.apiPrefix}`);
+    /* eslint-enable no-console */
   });
-});
 
-process.on('SIGINT', () => {
-  console.log('SIGINT received, shutting down gracefully...');
-  server.close(() => {
-    console.log('Server closed');
-    process.exit(0);
+  /**
+   * Graceful shutdown
+   */
+  process.on('SIGTERM', () => {
+    /* eslint-disable no-console */
+    console.log('SIGTERM received, shutting down gracefully...');
+    /* eslint-enable no-console */
+    server.close(() => {
+      /* eslint-disable no-console */
+      console.log('Server closed');
+      /* eslint-enable no-console */
+      process.exit(0);
+    });
   });
-});
 
-export { server };
+  process.on('SIGINT', () => {
+    /* eslint-disable no-console */
+    console.log('SIGINT received, shutting down gracefully...');
+    /* eslint-enable no-console */
+    server.close(() => {
+      /* eslint-disable no-console */
+      console.log('Server closed');
+      /* eslint-enable no-console */
+      process.exit(0);
+    });
+  });
+
+  return server;
+}
+
+// Start server
+start().catch((error) => {
+  /* eslint-disable no-console */
+  console.error('Failed to start server:', error);
+  /* eslint-enable no-console */
+  process.exit(1);
+});

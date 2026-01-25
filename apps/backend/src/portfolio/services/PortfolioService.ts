@@ -43,6 +43,102 @@ export class PortfolioService {
   }
 
   /**
+   * Get all positions for a user with staleness check
+   * Per API.md: data is stale if > 5 seconds old
+   */
+  async getPositions(userId: string): Promise<{
+    positions: Array<{
+      symbol: string;
+      quantity: number;
+      avgEntryPrice: number;
+      realizedPnl: number;
+      totalFees: number;
+      unrealizedPnl: number;
+      dataAsOfTimestamp: Date;
+    }>;
+    dataAsOfTimestamp: Date;
+    isStale: boolean;
+  }> {
+    const positions = await this.positionRepository.findByUserId(userId);
+
+    if (positions.length === 0) {
+      return {
+        positions: [],
+        dataAsOfTimestamp: new Date(),
+        isStale: false,
+      };
+    }
+
+    // Calculate overall staleness based on oldest position update
+    const oldestTimestamp = positions.reduce(
+      (oldest, pos) =>
+        pos.dataAsOfTimestamp < oldest ? pos.dataAsOfTimestamp : oldest,
+      positions[0].dataAsOfTimestamp
+    );
+
+    const now = new Date();
+    const ageSeconds = (now.getTime() - oldestTimestamp.getTime()) / 1000;
+    const isStale = ageSeconds > 5;
+
+    // For MVP: unrealized PnL requires current market price
+    // Simplified: return 0 for now (will be implemented with price service)
+    const positionsWithPnL = positions.map((pos) => ({
+      symbol: pos.symbol,
+      quantity: pos.quantity,
+      avgEntryPrice: pos.avgEntryPrice,
+      realizedPnl: pos.realizedPnl,
+      totalFees: pos.totalFees,
+      unrealizedPnl: 0, // TODO: Calculate from current market price
+      dataAsOfTimestamp: pos.dataAsOfTimestamp,
+    }));
+
+    return {
+      positions: positionsWithPnL,
+      dataAsOfTimestamp: oldestTimestamp,
+      isStale,
+    };
+  }
+
+  /**
+   * Get portfolio overview with total equity, PnL, and staleness
+   */
+  async getPortfolioOverview(userId: string): Promise<{
+    balance: number;
+    equity: number;
+    unrealizedPnl: number;
+    realizedPnl: number;
+    dataAsOfTimestamp: Date;
+    isStale: boolean;
+  }> {
+    const positionsData = await this.getPositions(userId);
+
+    // Calculate total realized PnL and fees
+    const totalRealizedPnl = positionsData.positions.reduce(
+      (sum, pos) => sum + pos.realizedPnl,
+      0
+    );
+
+    const totalUnrealizedPnl = positionsData.positions.reduce(
+      (sum, pos) => sum + pos.unrealizedPnl,
+      0
+    );
+
+    // For MVP: balance is simplified
+    // In production, this would come from exchange balance sync
+    const balance = 10000; // Placeholder
+    const equity = balance + totalUnrealizedPnl;
+
+    return {
+      balance,
+      equity,
+      unrealizedPnl: totalUnrealizedPnl,
+      realizedPnl: totalRealizedPnl,
+      dataAsOfTimestamp: positionsData.dataAsOfTimestamp,
+      isStale: positionsData.isStale,
+    };
+  }
+
+  /**
    * Process a single portfolio event
    * Wrapped in transaction for atomicity
    */

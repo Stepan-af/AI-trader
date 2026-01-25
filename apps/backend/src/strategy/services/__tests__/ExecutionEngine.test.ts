@@ -95,9 +95,7 @@ describe('ExecutionEngine', () => {
       const strategyId = 'strat-1';
       const userId = 'user-1';
 
-      killSwitchService.checkAndThrow.mockRejectedValue(
-        new Error('Emergency stop is active')
-      );
+      killSwitchService.checkAndThrow.mockRejectedValue(new Error('Emergency stop is active'));
 
       await expect(engine.startStrategy(strategyId, userId)).rejects.toThrow(
         'Emergency stop is active'

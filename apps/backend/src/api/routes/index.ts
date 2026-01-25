@@ -7,6 +7,9 @@ import { Router } from 'express';
 import { healthCheck } from './health';
 import { clearRiskCache, initializeRiskRoute, validateRisk } from './risk';
 
+// Service instances will be injected during initialization
+let servicesInitialized = false;
+
 const router = Router();
 
 /**
@@ -27,25 +30,76 @@ router.post('/risk/validate', validateRisk);
 router.post('/admin/risk-cache/clear', clearRiskCache);
 
 /**
- * Placeholder routes for future implementation
- * These will be implemented in subsequent commits
+ * Initialize routes with service dependencies
+ * Must be called before app starts
  */
+export function initializeRoutes(services: {
+  strategyService: import('../../strategy/services/StrategyService').StrategyService;
+  executionEngine: import('../../strategy/services/ExecutionEngine').ExecutionEngine;
+  killSwitchService: import('../../execution/services/KillSwitchService').KillSwitchService;
+  portfolioService: import('../../portfolio/services/PortfolioService').PortfolioService;
+  orderRepository: import('../../execution/repositories/OrderRepository').OrderRepository;
+  fillRepository: import('../../execution/repositories/FillRepository').FillRepository;
+}): void {
+  if (servicesInitialized) {
+    throw new Error('Routes already initialized');
+  }
 
-// Authentication routes (Commit 5+)
-// router.post('/auth/login', ...);
-// router.post('/auth/refresh', ...);
+  // Import route handlers
+  const strategyRoutes = require('./strategies');
+  const portfolioRoutes = require('./portfolio');
+  const orderRoutes = require('./orders');
 
-// Strategy routes (Commit 13-14)
-// router.get('/strategies', authenticateJWT, ...);
-// router.post('/strategies', authenticateJWT, requireIdempotency, ...);
+  // Strategy routes
+  router.get('/strategies', (req, res) =>
+    strategyRoutes.listStrategies(req, res, services.strategyService)
+  );
+  router.post('/strategies', (req, res) =>
+    strategyRoutes.createStrategy(req, res, services.strategyService)
+  );
+  router.put('/strategies/:id', (req, res) =>
+    strategyRoutes.updateStrategy(req, res, services.strategyService)
+  );
+  router.delete('/strategies/:id', (req, res) =>
+    strategyRoutes.deleteStrategy(req, res, services.strategyService)
+  );
+  router.post('/strategies/:id/start', (req, res) =>
+    strategyRoutes.startStrategy(
+      req,
+      res,
+      services.strategyService,
+      services.executionEngine,
+      services.killSwitchService
+    )
+  );
+  router.post('/strategies/:id/stop', (req, res) =>
+    strategyRoutes.stopStrategy(req, res, services.executionEngine, services.strategyService)
+  );
 
-// Order routes (Commit 5-8)
-// router.get('/orders', authenticateJWT, ...);
-// router.post('/orders', authenticateJWT, requireIdempotency, ...);
+  // Portfolio routes
+  router.get('/portfolio', (req, res) =>
+    portfolioRoutes.getPortfolioOverview(req, res, services.portfolioService)
+  );
+  router.get('/portfolio/positions', (req, res) =>
+    portfolioRoutes.getPositions(req, res, services.portfolioService)
+  );
+  router.get('/portfolio/pnl', (req, res) =>
+    portfolioRoutes.getPnL(req, res, services.portfolioService)
+  );
 
-// Portfolio routes (Commit 11-12)
-// router.get('/portfolio/positions', authenticateJWT, ...);
-// router.get('/portfolio/balances', authenticateJWT, ...);
+  // Order routes
+  router.get('/orders', (req, res) =>
+    orderRoutes.listOrders(req, res, services.orderRepository)
+  );
+  router.get('/orders/:id', (req, res) =>
+    orderRoutes.getOrder(req, res, services.orderRepository)
+  );
+  router.get('/orders/:id/fills', (req, res) =>
+    orderRoutes.getOrderFills(req, res, services.fillRepository, services.orderRepository)
+  );
+
+  servicesInitialized = true;
+}
 
 export { initializeRiskRoute };
 export default router;

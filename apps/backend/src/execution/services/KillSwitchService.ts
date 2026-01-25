@@ -90,7 +90,7 @@ export class KillSwitchService {
       throw new KillSwitchActiveError(
         `Emergency stop is active. Cannot start strategies until cleared by administrator.`,
         state.reason ?? 'unknown',
-        activatedAt,
+        activatedAt
       );
     }
   }
@@ -107,7 +107,7 @@ export class KillSwitchActiveError extends Error {
   constructor(
     message: string,
     public readonly killSwitchReason: string,
-    public readonly activatedAt: string,
+    public readonly activatedAt: string
   ) {
     super(message);
     this.name = 'KillSwitchActiveError';
