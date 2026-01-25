@@ -38,10 +38,7 @@ export class HealthCheckService {
    * Perform basic health check
    */
   async checkHealth(): Promise<HealthStatus> {
-    const [dbHealth, redisHealth] = await Promise.all([
-      this.checkDatabase(),
-      this.checkRedis(),
-    ]);
+    const [dbHealth, redisHealth] = await Promise.all([this.checkDatabase(), this.checkRedis()]);
 
     const overallStatus = this.determineOverallStatus(dbHealth, redisHealth);
 
@@ -137,8 +134,12 @@ export class HealthCheckService {
     try {
       const [ordersResult, strategiesResult, eventsResult] = await Promise.all([
         this.pool.query<{ count: string }>('SELECT COUNT(*) FROM execution.orders'),
-        this.pool.query<{ count: string }>("SELECT COUNT(*) FROM strategy.strategies WHERE status = 'RUNNING'"),
-        this.pool.query<{ count: string }>('SELECT COUNT(*) FROM portfolio.portfolio_event_outbox WHERE processed_at IS NULL'),
+        this.pool.query<{ count: string }>(
+          "SELECT COUNT(*) FROM strategy.strategies WHERE status = 'RUNNING'"
+        ),
+        this.pool.query<{ count: string }>(
+          'SELECT COUNT(*) FROM portfolio.portfolio_event_outbox WHERE processed_at IS NULL'
+        ),
       ]);
 
       return {

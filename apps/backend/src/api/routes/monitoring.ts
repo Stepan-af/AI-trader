@@ -19,7 +19,8 @@ export function createMonitoringRoutes(healthCheckService: HealthCheckService): 
     try {
       const health = await healthCheckService.checkHealth();
 
-      const statusCode = health.status === 'healthy' ? 200 : health.status === 'degraded' ? 200 : 503;
+      const statusCode =
+        health.status === 'healthy' ? 200 : health.status === 'degraded' ? 200 : 503;
 
       res.status(statusCode).json(health);
     } catch (error) {
@@ -39,7 +40,8 @@ export function createMonitoringRoutes(healthCheckService: HealthCheckService): 
     try {
       const health = await healthCheckService.checkDetailedHealth();
 
-      const statusCode = health.status === 'healthy' ? 200 : health.status === 'degraded' ? 200 : 503;
+      const statusCode =
+        health.status === 'healthy' ? 200 : health.status === 'degraded' ? 200 : 503;
 
       res.status(statusCode).json(health);
     } catch (error) {

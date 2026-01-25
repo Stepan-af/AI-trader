@@ -7,9 +7,11 @@ This module provides comprehensive monitoring and observability for the AI Trade
 ### Health Checks
 
 #### Basic Health Check
+
 - **Endpoint**: `GET /api/v1/health`
 - **Purpose**: Quick health status check
 - **Response**:
+
 ```json
 {
   "status": "healthy",
@@ -29,9 +31,11 @@ This module provides comprehensive monitoring and observability for the AI Trade
 ```
 
 #### Detailed Health Check
+
 - **Endpoint**: `GET /api/v1/health/detailed`
 - **Purpose**: Comprehensive system status with metrics
 - **Response**:
+
 ```json
 {
   "status": "healthy",
@@ -52,6 +56,7 @@ This module provides comprehensive monitoring and observability for the AI Trade
 ### Prometheus Metrics
 
 #### Metrics Endpoint
+
 - **Endpoint**: `GET /api/v1/metrics`
 - **Format**: Prometheus text format
 - **Content-Type**: `text/plain; version=0.0.4`
@@ -59,43 +64,52 @@ This module provides comprehensive monitoring and observability for the AI Trade
 #### Available Metrics
 
 **Order Metrics**
+
 - `orders_total` (Counter) - Total orders created, labeled by status/side/type
 - `order_success_rate` (Gauge) - Order success rate percentage
 - `order_execution_latency_seconds` (Histogram) - Order execution time
 
 **Fill Metrics**
+
 - `fills_total` (Counter) - Total fills processed, labeled by source
 - `duplicate_fills_total` (Counter) - Duplicate fills detected
 
 **Reconciliation Metrics**
+
 - `reconciliation_runs_total` (Counter) - Reconciliation runs, labeled by status
 - `reconciliation_errors_total` (Counter) - Reconciliation errors by type
 - `missed_fills_total` (Counter) - Missed fills detected
 
 **Portfolio Metrics**
+
 - `portfolio_events_total` (Counter) - Portfolio events processed
 - `portfolio_event_backlog` (Gauge) - Unprocessed events in outbox
 - `position_updates_total` (Counter) - Position updates by symbol
 
 **Strategy Metrics**
+
 - `strategies_active` (Gauge) - Active strategies by type and mode
 - `signals_total` (Counter) - Trading signals generated
 
 **System Metrics**
+
 - `database_connection_status` (Gauge) - Database status (1=up, 0=down)
 - `redis_connection_status` (Gauge) - Redis status (1=up, 0=down)
 - `kill_switch_active` (Gauge) - Kill switch status (1=active, 0=inactive)
 - `clock_drift_milliseconds` (Gauge) - Clock drift from NTP
 
 **Backtest Metrics**
+
 - `backtests_total` (Counter) - Backtests executed by status
 - `backtest_duration_seconds` (Histogram) - Backtest execution time
 
 **HTTP Metrics**
+
 - `http_requests_total` (Counter) - HTTP requests by method/route/status
 - `http_request_duration_seconds` (Histogram) - Request duration
 
 **Error Metrics**
+
 - `errors_total` (Counter) - Total errors by type and service
 
 ## Usage
@@ -103,6 +117,7 @@ This module provides comprehensive monitoring and observability for the AI Trade
 ### In Code
 
 #### Tracking Order Metrics
+
 ```typescript
 import { orderCounter, orderLatency } from '@/monitoring/metrics';
 
@@ -116,6 +131,7 @@ timer();
 ```
 
 #### Tracking Errors
+
 ```typescript
 import { errorCounter } from '@/monitoring/metrics';
 
@@ -145,21 +161,25 @@ scrape_configs:
 Example queries for Grafana:
 
 **Order Success Rate**
+
 ```promql
 rate(orders_total{status="FILLED"}[5m]) / rate(orders_total[5m]) * 100
 ```
 
 **Average Order Latency**
+
 ```promql
 rate(order_execution_latency_seconds_sum[5m]) / rate(order_execution_latency_seconds_count[5m])
 ```
 
 **Portfolio Event Backlog**
+
 ```promql
 portfolio_event_backlog
 ```
 
 **HTTP Request Rate**
+
 ```promql
 rate(http_requests_total[5m])
 ```
@@ -177,46 +197,46 @@ groups:
         expr: database_connection_status == 0
         for: 1m
         annotations:
-          summary: "Database connection is down"
+          summary: 'Database connection is down'
 
       - alert: RedisDown
         expr: redis_connection_status == 0
         for: 1m
         annotations:
-          summary: "Redis connection is down"
+          summary: 'Redis connection is down'
 
       # Kill switch
       - alert: KillSwitchActive
         expr: kill_switch_active == 1
         annotations:
-          summary: "Kill switch is active - all trading stopped"
+          summary: 'Kill switch is active - all trading stopped'
 
       # Portfolio backlog
       - alert: PortfolioBacklogHigh
         expr: portfolio_event_backlog > 200
         for: 5m
         annotations:
-          summary: "Portfolio event backlog is high (>200 events)"
+          summary: 'Portfolio event backlog is high (>200 events)'
 
       # Reconciliation errors
       - alert: ReconciliationErrors
         expr: rate(reconciliation_errors_total[5m]) > 0
         annotations:
-          summary: "Reconciliation errors detected"
+          summary: 'Reconciliation errors detected'
 
       # Order failures
       - alert: HighOrderFailureRate
         expr: rate(orders_total{status="REJECTED"}[5m]) / rate(orders_total[5m]) > 0.1
         for: 5m
         annotations:
-          summary: "Order failure rate > 10%"
+          summary: 'Order failure rate > 10%'
 
       # Performance
       - alert: HighOrderLatency
         expr: histogram_quantile(0.95, rate(order_execution_latency_seconds_bucket[5m])) > 5
         for: 5m
         annotations:
-          summary: "95th percentile order latency > 5s"
+          summary: '95th percentile order latency > 5s'
 ```
 
 ## Architecture

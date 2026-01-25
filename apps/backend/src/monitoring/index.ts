@@ -3,6 +3,6 @@
  * Exports monitoring components
  */
 
-export * from './metrics';
 export { HealthCheckService } from './HealthCheckService';
+export * from './metrics';
 export { metricsMiddleware } from './middleware';
