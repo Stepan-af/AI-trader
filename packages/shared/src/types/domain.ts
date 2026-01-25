@@ -200,6 +200,20 @@ export interface Candle {
 }
 
 // ============================================================================
+// Signal Domain
+// ============================================================================
+
+export type SignalType = 'BUY' | 'SELL' | 'HOLD';
+
+export interface TradingSignal {
+  strategyId: string;
+  symbol: string;
+  type: SignalType;
+  timestamp: Date;
+  reason?: string; // Optional explanation
+}
+
+// ============================================================================
 // Backtest Domain
 // ============================================================================
 
