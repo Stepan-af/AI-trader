@@ -6,8 +6,20 @@
 import { createApp } from './app';
 import { config } from './config';
 import { initializeServices } from './init';
+import { validateEnvironment } from './validateEnv';
 
 async function start() {
+  // Validate environment variables before proceeding
+  try {
+    validateEnvironment();
+  } catch (error) {
+    /* eslint-disable no-console */
+    console.error('Environment validation failed:');
+    console.error((error as Error).message);
+    /* eslint-enable no-console */
+    process.exit(1);
+  }
+
   // Initialize all services and wire routes
   await initializeServices();
 

@@ -16,12 +16,12 @@ import type { PortfolioService } from '../../portfolio/services/PortfolioService
  * - UI must display timestamp to user
  */
 export async function getPortfolioOverview(
-  _req: Request,
+  req: Request,
   res: Response,
   portfolioService: PortfolioService
 ): Promise<void> {
-  // TODO: Extract userId from JWT token
-  const userId = 'default-user';
+  // User ID extracted from JWT by authenticateJWT middleware
+  const userId = req.user!.userId;
 
   const overview = await portfolioService.getPortfolioOverview(userId);
 
@@ -40,12 +40,12 @@ export async function getPortfolioOverview(
  * List all positions with unrealized PnL and staleness
  */
 export async function getPositions(
-  _req: Request,
+  req: Request,
   res: Response,
   portfolioService: PortfolioService
 ): Promise<void> {
-  // TODO: Extract userId from JWT token
-  const userId = 'default-user';
+  // User ID extracted from JWT by authenticateJWT middleware
+  const userId = req.user!.userId;
 
   const data = await portfolioService.getPositions(userId);
 
@@ -75,12 +75,12 @@ export async function getPositions(
  * Currently returns same data as portfolio overview
  */
 export async function getPnL(
-  _req: Request,
+  req: Request,
   res: Response,
   portfolioService: PortfolioService
 ): Promise<void> {
-  // TODO: Extract userId from JWT token
-  const userId = 'default-user';
+  // User ID extracted from JWT by authenticateJWT middleware
+  const userId = req.user!.userId;
 
   const overview = await portfolioService.getPortfolioOverview(userId);
 

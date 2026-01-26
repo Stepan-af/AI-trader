@@ -12,6 +12,7 @@ import { KillSwitchService } from '../execution/services/KillSwitchService';
 import { OrderService } from '../execution/services/OrderService';
 import { HealthCheckService } from '../monitoring/HealthCheckService';
 import { PortfolioService } from '../portfolio/services/PortfolioService';
+import { RiskService } from '../risk/services/RiskService';
 import { ExecutionEngine } from '../strategy/services/ExecutionEngine';
 import { StrategyService } from '../strategy/services/StrategyService';
 import { initializeRoutes } from './routes';
@@ -47,6 +48,7 @@ export async function initializeServices(): Promise<void> {
   // Create services
   const killSwitchService = new KillSwitchService(redis);
   const portfolioService = new PortfolioService(pool);
+  const riskService = new RiskService(pool);
   const strategyService = new StrategyService(pool);
   const orderService = new OrderService(pool);
   const backtestService = new BacktestService(pool);
@@ -61,8 +63,10 @@ export async function initializeServices(): Promise<void> {
     executionEngine,
     killSwitchService,
     portfolioService,
+    riskService,
     orderRepository,
     fillRepository,
+    orderService,
     backtestService,
     healthCheckService,
     pool,

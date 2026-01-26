@@ -13,12 +13,12 @@ import type { StrategyService } from '../../strategy/services/StrategyService';
  * List all strategies for authenticated user
  */
 export async function listStrategies(
-  _req: Request,
+  req: Request,
   res: Response,
   strategyService: StrategyService
 ): Promise<void> {
-  // TODO: Extract userId from JWT token (authentication not implemented yet)
-  const userId = 'default-user';
+  // User ID extracted from JWT by authenticateJWT middleware
+  const userId = req.user!.userId;
 
   const strategies = await strategyService.listStrategies(userId);
 
@@ -41,8 +41,8 @@ export async function createStrategy(
   res: Response,
   strategyService: StrategyService
 ): Promise<void> {
-  // TODO: Extract userId from JWT token
-  const userId = 'default-user';
+  // User ID extracted from JWT by authenticateJWT middleware
+  const userId = req.user!.userId;
 
   const { name, type, symbol, timeframe, dca, grid, swing, risk } = req.body as {
     name?: string;
@@ -212,10 +212,13 @@ export async function startStrategy(
   res: Response,
   strategyService: StrategyService,
   executionEngine: ExecutionEngine,
-  killSwitchService: KillSwitchService
+  killSwitchService: KillSwitchService,
+  portfolioService: import('../../portfolio/services/PortfolioService').PortfolioService,
+  healthCheckService: import('../../monitoring/HealthCheckService').HealthCheckService
 ): Promise<void> {
   const { id } = req.params;
   const { mode } = req.body as { mode?: string };
+  const userId = req.user!.userId;
 
   // Validate mode
   if (!mode || !['PAPER', 'LIVE'].includes(mode)) {
@@ -233,6 +236,15 @@ export async function startStrategy(
     res.status(404).json({
       error: 'NOT_FOUND',
       message: 'Strategy not found',
+    });
+    return;
+  }
+
+  // Verify strategy belongs to user
+  if (strategy.userId !== userId) {
+    res.status(403).json({
+      error: 'FORBIDDEN',
+      message: 'Cannot start strategy belonging to another user',
     });
     return;
   }
@@ -265,10 +277,58 @@ export async function startStrategy(
     throw error;
   }
 
-  // Precondition 2-4: Delegate to ExecutionEngine which checks:
-  // - Risk Service health
-  // - Portfolio staleness
-  // - Exchange connection (for LIVE mode)
+  // Precondition 2: Check system health (Risk Service availability via health check)
+  // Per API.md: Risk Service health check passed (last response < 5s ago)
+  const healthStatus = await healthCheckService.checkHealth();
+  if (healthStatus.status === 'unhealthy') {
+    const failedChecks: string[] = [];
+    if (healthStatus.services.database.status === 'down') {
+      failedChecks.push('database_down');
+    }
+    if (healthStatus.services.redis.status === 'down') {
+      failedChecks.push('redis_down');
+    }
+
+    res.status(503).json({
+      error: 'SERVICE_UNAVAILABLE',
+      message: 'Cannot start strategy: dependent services unhealthy',
+      failed_checks: failedChecks,
+      retry_after_seconds: 10,
+    });
+    return;
+  }
+
+  // Precondition 3: Check Portfolio Service responsiveness and staleness
+  // Per API.md: If Portfolio Service returns is_stale=true, block strategy start
+  try {
+    const portfolio = await portfolioService.getPortfolioOverview(userId);
+
+    if (portfolio.isStale) {
+      res.status(503).json({
+        error: 'SERVICE_UNAVAILABLE',
+        message: 'Portfolio data stale, cannot validate risk limits',
+        retry_after_seconds: 10,
+      });
+      return;
+    }
+  } catch (error) {
+    res.status(503).json({
+      error: 'SERVICE_UNAVAILABLE',
+      message: 'Portfolio Service unreachable',
+      failed_checks: ['portfolio_service_timeout'],
+      retry_after_seconds: 10,
+    });
+    return;
+  }
+
+  // Precondition 4: For LIVE mode, verify Exchange WebSocket connected
+  // TODO: Add exchange connection check when websocket adapter is implemented
+  if (mode === 'LIVE') {
+    // Placeholder for exchange connection check
+    // Will be implemented with BinanceWebSocketAdapter
+  }
+
+  // All preconditions passed - delegate to ExecutionEngine
   try {
     await executionEngine.startStrategy(id, mode as 'PAPER' | 'LIVE');
 

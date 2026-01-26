@@ -3,6 +3,27 @@
  * Centralized configuration for Express server and middleware
  */
 
+/**
+ * Validate and get JWT secret
+ * Throws error in production if JWT_SECRET not set
+ */
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+
+  if (!secret || secret === 'your-secret-key-change-in-production') {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'JWT_SECRET environment variable must be set to a secure value in production. ' +
+          'Generate one with: openssl rand -hex 32'
+      );
+    }
+    // Development fallback
+    return 'dev-secret-unsafe-for-production';
+  }
+
+  return secret;
+}
+
 export const config = {
   port: parseInt(process.env.PORT || '3000', 10),
   apiPrefix: '/api/v1',
@@ -10,7 +31,7 @@ export const config = {
 
   // JWT Configuration
   jwt: {
-    secret: process.env.JWT_SECRET || 'change-me-in-production',
+    secret: getJwtSecret(),
     expiresIn: process.env.JWT_EXPIRES_IN || '24h',
   },
 

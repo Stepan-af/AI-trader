@@ -119,9 +119,18 @@ export class PortfolioService {
       0
     );
 
-    // For MVP: balance is simplified
-    // In production, this would come from exchange balance sync
-    const balance = 10000; // Placeholder
+    // Query actual balance from database
+    // Sum all asset balances converted to USD (for MVP, simplified to USDT only)
+    const balanceResult = await this.pool.query<{ total: string }>(
+      `
+      SELECT COALESCE(SUM(total), 0) as total
+      FROM portfolio.balances
+      WHERE user_id = $1 AND asset = 'USDT'
+    `,
+      [userId]
+    );
+
+    const balance = parseFloat(balanceResult.rows[0]?.total || '0');
     const equity = balance + totalUnrealizedPnl;
 
     return {

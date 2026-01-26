@@ -138,7 +138,7 @@ export class HealthCheckService {
           "SELECT COUNT(*) FROM strategy.strategies WHERE status = 'RUNNING'"
         ),
         this.pool.query<{ count: string }>(
-          'SELECT COUNT(*) FROM portfolio.portfolio_event_outbox WHERE processed_at IS NULL'
+          'SELECT COUNT(*) FROM execution.portfolio_events_outbox WHERE processed_at IS NULL'
         ),
       ]);
 

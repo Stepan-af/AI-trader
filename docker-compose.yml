@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  # PostgreSQL with TimescaleDB extension
+  postgres:
+    image: timescale/timescaledb:latest-pg15
+    container_name: ai-trader-postgres
+    environment:
+      POSTGRES_DB: ai_trader
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai-trader-network
+
+  # Redis for caching, rate limiting, and job queues
+  redis:
+    image: redis:7-alpine
+    container_name: ai-trader-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai-trader-network
+
+  # Backend application
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-trader-backend
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ai_trader
+      REDIS_URL: redis://redis:6379
+      REDIS_DB: 0
+      JWT_SECRET: dev-secret-change-in-production-min-32-chars
+      JWT_EXPIRES_IN: 24h
+      # Binance keys optional for PAPER mode
+      BINANCE_API_KEY: ${BINANCE_API_KEY:-}
+      BINANCE_API_SECRET: ${BINANCE_API_SECRET:-}
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./apps:/app/apps
+      - ./packages:/app/packages
+      - /app/node_modules
+    networks:
+      - ai-trader-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  ai-trader-network:
+    driver: bridge

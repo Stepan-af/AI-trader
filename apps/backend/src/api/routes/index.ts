@@ -4,6 +4,7 @@
  */
 
 import { Router } from 'express';
+import { authenticateJWT, requireIdempotency } from '../middleware';
 import { healthCheck } from './health';
 import { clearRiskCache, initializeRiskRoute, validateRisk } from './risk';
 
@@ -38,8 +39,10 @@ export function initializeRoutes(services: {
   executionEngine: import('../../strategy/services/ExecutionEngine').ExecutionEngine;
   killSwitchService: import('../../execution/services/KillSwitchService').KillSwitchService;
   portfolioService: import('../../portfolio/services/PortfolioService').PortfolioService;
+  riskService: import('../../risk/services/RiskService').RiskService;
   orderRepository: import('../../execution/repositories/OrderRepository').OrderRepository;
   fillRepository: import('../../execution/repositories/FillRepository').FillRepository;
+  orderService: import('../../execution/services/OrderService').OrderService;
   backtestService: import('../../backtest/services/BacktestService').BacktestService;
   healthCheckService: import('../../monitoring/HealthCheckService').HealthCheckService;
   pool: import('pg').Pool;
@@ -55,48 +58,66 @@ export function initializeRoutes(services: {
   const { createBacktestRoutes } = require('./backtests');
   const { createMonitoringRoutes } = require('./monitoring');
 
-  // Strategy routes
-  router.get('/strategies', (req, res) =>
+  // Strategy routes - all require authentication
+  router.get('/strategies', authenticateJWT, (req, res) =>
     strategyRoutes.listStrategies(req, res, services.strategyService)
   );
-  router.post('/strategies', (req, res) =>
+  router.post('/strategies', authenticateJWT, requireIdempotency, (req, res) =>
     strategyRoutes.createStrategy(req, res, services.strategyService)
   );
-  router.put('/strategies/:id', (req, res) =>
+  router.put('/strategies/:id', authenticateJWT, requireIdempotency, (req, res) =>
     strategyRoutes.updateStrategy(req, res, services.strategyService)
   );
-  router.delete('/strategies/:id', (req, res) =>
+  router.delete('/strategies/:id', authenticateJWT, (req, res) =>
     strategyRoutes.deleteStrategy(req, res, services.strategyService)
   );
-  router.post('/strategies/:id/start', (req, res) =>
+  router.post('/strategies/:id/start', authenticateJWT, requireIdempotency, (req, res) =>
     strategyRoutes.startStrategy(
       req,
       res,
       services.strategyService,
       services.executionEngine,
-      services.killSwitchService
+      services.killSwitchService,
+      services.portfolioService,
+      services.healthCheckService
     )
   );
-  router.post('/strategies/:id/stop', (req, res) =>
+  router.post('/strategies/:id/stop', authenticateJWT, requireIdempotency, (req, res) =>
     strategyRoutes.stopStrategy(req, res, services.executionEngine, services.strategyService)
   );
 
-  // Portfolio routes
-  router.get('/portfolio', (req, res) =>
+  // Portfolio routes - all require authentication
+  router.get('/portfolio', authenticateJWT, (req, res) =>
     portfolioRoutes.getPortfolioOverview(req, res, services.portfolioService)
   );
-  router.get('/portfolio/positions', (req, res) =>
+  router.get('/portfolio/positions', authenticateJWT, (req, res) =>
     portfolioRoutes.getPositions(req, res, services.portfolioService)
   );
-  router.get('/portfolio/pnl', (req, res) =>
+  router.get('/portfolio/pnl', authenticateJWT, (req, res) =>
     portfolioRoutes.getPnL(req, res, services.portfolioService)
   );
 
-  // Order routes
-  router.get('/orders', (req, res) => orderRoutes.listOrders(req, res, services.orderRepository));
-  router.get('/orders/:id', (req, res) => orderRoutes.getOrder(req, res, services.orderRepository));
-  router.get('/orders/:id/fills', (req, res) =>
+  // Order routes - all require authentication
+  router.get('/orders', authenticateJWT, (req, res) =>
+    orderRoutes.listOrders(req, res, services.orderRepository)
+  );
+  router.get('/orders/:id', authenticateJWT, (req, res) =>
+    orderRoutes.getOrder(req, res, services.orderRepository)
+  );
+  router.get('/orders/:id/fills', authenticateJWT, (req, res) =>
     orderRoutes.getOrderFills(req, res, services.fillRepository, services.orderRepository)
+  );
+  router.post('/orders', authenticateJWT, requireIdempotency, (req, res) =>
+    orderRoutes.placeOrder(
+      req,
+      res,
+      services.orderService,
+      services.killSwitchService,
+      services.riskService
+    )
+  );
+  router.post('/orders/:id/cancel', authenticateJWT, requireIdempotency, (req, res) =>
+    orderRoutes.cancelOrder(req, res, services.orderService, services.orderRepository)
   );
 
   // Backtest routes

@@ -28,8 +28,8 @@ export function createDatabasePool(): Pool {
  */
 export async function testDatabaseConnection(pool: Pool): Promise<boolean> {
   try {
-    const result = await pool.query('SELECT 1 as test');
-    return result.rows[0].test === 1;
+    const result = await pool.query<{ test: number }>('SELECT 1 as test');
+    return result.rows[0]?.test === 1;
   } catch (_error) {
     return false;
   }
