@@ -21,14 +21,16 @@ router.get('/health', healthCheck);
 /**
  * Risk validation endpoint (internal service-to-service)
  * Called by Execution Service before submitting orders
+ * Protected by authentication to prevent external probing
  */
-router.post('/risk/validate', validateRisk);
+router.post('/risk/validate', authenticateJWT, validateRisk);
 
 /**
  * Admin endpoint to clear risk approval cache
  * Per ARCHITECTURE.md: Manual cache invalidation
+ * Requires authentication (admin-only in production)
  */
-router.post('/admin/risk-cache/clear', clearRiskCache);
+router.post('/admin/risk-cache/clear', authenticateJWT, clearRiskCache);
 
 /**
  * Initialize routes with service dependencies
@@ -120,8 +122,8 @@ export function initializeRoutes(services: {
     orderRoutes.cancelOrder(req, res, services.orderService, services.orderRepository)
   );
 
-  // Backtest routes
-  router.use('/backtests', createBacktestRoutes(services.backtestService));
+  // Backtest routes - all require authentication per API.md
+  router.use('/backtests', authenticateJWT, createBacktestRoutes(services.backtestService));
 
   // Monitoring routes (health checks and metrics)
   router.use('/', createMonitoringRoutes(services.healthCheckService));

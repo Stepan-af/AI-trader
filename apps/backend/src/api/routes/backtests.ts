@@ -4,8 +4,10 @@
  */
 
 import type { BacktestRun } from '@ai-trader/shared';
+import type { NextFunction, Request, Response } from 'express';
 import { Router } from 'express';
 import type { BacktestService } from '../../backtest/services/BacktestService';
+import { requireIdempotency } from '../middleware';
 
 export function createBacktestRoutes(backtestService: BacktestService): Router {
   const router = Router();
@@ -13,8 +15,41 @@ export function createBacktestRoutes(backtestService: BacktestService): Router {
   /**
    * POST /backtests
    * Start a new backtest
+   * Per API.md: Requires Idempotency-Key header
    */
-  router.post('/', async (req, res, next) => {
+  router.post('/', requireIdempotency, (req: Request, res: Response, next: NextFunction): void => {
+    handlePostBacktest(req, res, next, backtestService);
+  });
+
+  /**
+   * GET /backtests/:id
+   * Get backtest status and results
+   */
+  router.get('/:id', (req: Request, res: Response, next: NextFunction): void => {
+    handleGetBacktest(req, res, next, backtestService);
+  });
+
+  /**
+   * GET /backtests
+   * List user's backtests
+   */
+  router.get('/', (req: Request, res: Response, next: NextFunction): void => {
+    handleListBacktests(req, res, next, backtestService);
+  });
+
+  return router;
+}
+
+/**
+ * Handle POST /backtests
+ */
+function handlePostBacktest(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  backtestService: BacktestService
+): void {
+  void (async (): Promise<void> => {
     try {
       const { strategyId, from, to, initialBalance } = req.body as {
         strategyId: string;
@@ -26,7 +61,8 @@ export function createBacktestRoutes(backtestService: BacktestService): Router {
       // Validate required fields
       if (!strategyId || !from || !to || !initialBalance) {
         res.status(400).json({
-          error: 'Missing required fields: strategyId, from, to, initialBalance',
+          error: 'VALIDATION_ERROR',
+          message: 'Missing required fields: strategyId, from, to, initialBalance',
         });
         return;
       }
@@ -36,7 +72,10 @@ export function createBacktestRoutes(backtestService: BacktestService): Router {
       const endDate = new Date(to);
 
       if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-        res.status(400).json({ error: 'Invalid date format' });
+        res.status(400).json({
+          error: 'VALIDATION_ERROR',
+          message: 'Invalid date format. Use ISO 8601 format (e.g., 2024-01-01T00:00:00Z)',
+        });
         return;
       }
 
@@ -72,13 +111,19 @@ export function createBacktestRoutes(backtestService: BacktestService): Router {
     } catch (error) {
       next(error);
     }
-  });
+  })();
+}
 
-  /**
-   * GET /backtests/:id
-   * Get backtest status and results
-   */
-  router.get('/:id', async (req, res, next) => {
+/**
+ * Handle GET /backtests/:id
+ */
+function handleGetBacktest(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  backtestService: BacktestService
+): void {
+  void (async (): Promise<void> => {
     try {
       const { id } = req.params;
 
@@ -86,7 +131,10 @@ export function createBacktestRoutes(backtestService: BacktestService): Router {
 
       // Check authorization
       if (run.userId !== req.user!.userId) {
-        res.status(403).json({ error: 'Forbidden' });
+        res.status(403).json({
+          error: 'FORBIDDEN',
+          message: 'Cannot access backtest belonging to another user',
+        });
         return;
       }
 
@@ -120,18 +168,27 @@ export function createBacktestRoutes(backtestService: BacktestService): Router {
       res.json(response);
     } catch (error) {
       if (error instanceof Error && error.message === 'Backtest not found') {
-        res.status(404).json({ error: 'Backtest not found' });
+        res.status(404).json({
+          error: 'NOT_FOUND',
+          message: 'Backtest not found',
+        });
         return;
       }
       next(error);
     }
-  });
+  })();
+}
 
-  /**
-   * GET /backtests
-   * List user's backtests
-   */
-  router.get('/', async (req, res, next) => {
+/**
+ * Handle GET /backtests
+ */
+function handleListBacktests(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  backtestService: BacktestService
+): void {
+  void (async (): Promise<void> => {
     try {
       const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
       const offset = parseInt(req.query.offset as string) || 0;
@@ -142,7 +199,5 @@ export function createBacktestRoutes(backtestService: BacktestService): Router {
     } catch (error) {
       next(error);
     }
-  });
-
-  return router;
+  })();
 }
