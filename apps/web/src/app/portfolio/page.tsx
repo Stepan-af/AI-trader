@@ -77,7 +77,6 @@ export default function PortfolioPage() {
         {
           maxAttempts: 3,
           onRetry: (attempt) => {
-            console.log(`Retrying portfolio data load (attempt ${attempt})`);
             setRetryCount(attempt);
           },
         }
