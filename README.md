@@ -74,7 +74,16 @@ npm run dev
 
 Backend will start on `http://localhost:3000`.
 
-### 6. Verify Health
+### 6. Start Frontend (Optional)
+
+```bash
+cd apps/web
+npm run dev
+```
+
+Frontend will start on `http://localhost:3001`.
+
+### 7. Verify Health
 
 ```bash
 curl http://localhost:3000/api/v1/health
@@ -96,16 +105,26 @@ Expected response:
 
 ## Full Stack (Docker Compose)
 
+Run the entire application stack (Backend + Frontend + Infrastructure):
+
 ```bash
-# Start all services (Postgres, Redis, Backend)
+# Start all services (Postgres, Redis, Backend, Frontend)
 docker-compose up -d
 
 # View logs
-docker-compose logs -f backend
+docker-compose logs -f
+
+# Access services:
+# - Frontend: http://localhost:3001
+# - Backend API: http://localhost:3000
+# - PostgreSQL: localhost:5432
+# - Redis: localhost:6379
 
 # Stop all services
 docker-compose down
 ```
+
+For production deployment, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Known Limitations (MVP)
 
@@ -178,23 +197,42 @@ npm run test:watch
 ## Project Structure
 
 ```
-apps/backend/          # Backend application
-  src/
-    api/              # HTTP routes and middleware
-    execution/        # Order management domain
-    portfolio/        # Position tracking domain
-    risk/             # Risk validation domain
-    strategy/         # Strategy management domain
-    backtest/         # Backtesting engine
-    monitoring/       # Health checks and metrics
+apps/
+  backend/            # Backend application (Node.js + Express)
+    src/
+      api/           # HTTP routes and middleware
+      execution/     # Order management domain
+      portfolio/     # Position tracking domain
+      risk/          # Risk validation domain
+      strategy/      # Strategy management domain
+      backtest/      # Backtesting engine
+      monitoring/    # Health checks and metrics
+  
+  web/               # Frontend application (Next.js + React)
+    src/
+      app/           # Next.js app directory (routes)
+      components/    # React components
+      hooks/         # Custom React hooks
+      lib/           # API client and utilities
+      types/         # TypeScript type definitions
 
-packages/shared/      # Shared types and utilities
+packages/shared/     # Shared types and utilities
 
 infra/
-  migrations/         # Database migrations
+  migrations/        # Database migrations
 
-docs/                 # Architecture and API docs
+docs/                # Documentation
+  ARCHITECTURE.md    # System architecture
+  API.md            # API reference
+  DEPLOYMENT.md     # Production deployment guide
 ```
+
+## Documentation
+
+- **[Architecture](docs/ARCHITECTURE.md)** - System design and principles
+- **[API Reference](docs/API.md)** - Complete API endpoint documentation
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions
+- **[Production Checklist](docs/PRODUCTION_CHECKLIST.md)** - Known limitations and fixes needed
 
 ## Contributing
 
