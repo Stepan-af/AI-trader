@@ -1,10 +1,16 @@
 'use client';
 
-import React from 'react';
 import { Badge } from '@/components/ui/Badge';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
-import type { OrderResponse, FillResponse } from '@/types/order';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/Table';
+import type { FillResponse, OrderResponse } from '@/types/order';
 
 interface OrderDetailsProps {
   order: OrderResponse;
@@ -128,7 +134,9 @@ export function OrderDetails({ order, fills }: OrderDetailsProps) {
                 {fills.map((fill) => (
                   <TableRow key={fill.id}>
                     <TableCell>{formatTimestamp(fill.timestamp)}</TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(fill.price)}</TableCell>
+                    <TableCell className="text-right font-mono">
+                      {formatCurrency(fill.price)}
+                    </TableCell>
                     <TableCell className="text-right font-mono">
                       {formatQuantity(fill.quantity)}
                     </TableCell>

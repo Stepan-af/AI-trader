@@ -1,11 +1,17 @@
 'use client';
 
-import React from 'react';
-import { X } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
+import { Button } from '@/components/ui/Button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/Table';
 import type { OrderResponse } from '@/types/order';
+import { X } from 'lucide-react';
 
 interface OrdersTableProps {
   orders: OrderResponse[];
@@ -47,7 +53,12 @@ export function OrdersTable({ orders, onCancel, onViewDetails }: OrdersTableProp
   };
 
   const canCancelOrder = (status: string) => {
-    return status === 'NEW' || status === 'SUBMITTED' || status === 'OPEN' || status === 'PARTIALLY_FILLED';
+    return (
+      status === 'NEW' ||
+      status === 'SUBMITTED' ||
+      status === 'OPEN' ||
+      status === 'PARTIALLY_FILLED'
+    );
   };
 
   if (orders.length === 0) {

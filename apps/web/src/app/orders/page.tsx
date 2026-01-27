@@ -1,18 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
-import { RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
-import { Alert } from '@/components/ui/Alert';
-import { PageLoading, LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { OrdersTable } from '@/components/orders/OrdersTable';
 import { OrderDetails } from '@/components/orders/OrderDetails';
+import { OrdersTable } from '@/components/orders/OrdersTable';
+import { Alert } from '@/components/ui/Alert';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { LoadingSpinner, PageLoading } from '@/components/ui/LoadingSpinner';
+import { Modal } from '@/components/ui/Modal';
+import { useAuth } from '@/hooks/useAuth';
 import { orderApi } from '@/lib/api/orders';
-import type { OrderResponse, FillResponse } from '@/types/order';
+import type { FillResponse, OrderResponse } from '@/types/order';
+import { RefreshCw } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 export default function OrdersPage() {
   const { auth } = useAuth();
@@ -51,7 +51,9 @@ export default function OrdersPage() {
       setError(null);
       const data = await orderApi.list();
       // Sort by createdAt descending (newest first)
-      const sorted = data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      const sorted = data.sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
       setOrders(sorted);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load orders');
@@ -65,7 +67,9 @@ export default function OrdersPage() {
       setIsRefreshing(true);
       setError(null);
       const data = await orderApi.list();
-      const sorted = data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      const sorted = data.sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
       setOrders(sorted);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to refresh orders');
@@ -106,7 +110,7 @@ export default function OrdersPage() {
       setOrderToCancel(null);
       setSuccessMessage(`Order ${orderToCancel.symbol} canceled successfully`);
       setTimeout(() => setSuccessMessage(null), 3000);
-      
+
       // Refresh orders list
       await loadOrders();
     } catch (err) {
@@ -186,9 +190,7 @@ export default function OrdersPage() {
         title="Cancel Order"
       >
         <div className="space-y-4">
-          <p className="text-gray-700">
-            Are you sure you want to cancel this order?
-          </p>
+          <p className="text-gray-700">Are you sure you want to cancel this order?</p>
           {orderToCancel && (
             <div className="p-4 bg-gray-50 rounded">
               <dl className="space-y-2 text-sm">

@@ -1,8 +1,8 @@
 // Order types - extends shared domain types with API-specific fields
 
-import type { Order, OrderStatus, OrderSide, OrderType, Fill } from '@ai-trader/shared';
+import type { Fill, Order, OrderSide, OrderStatus, OrderType } from '@ai-trader/shared';
 
-export type { Order, OrderStatus, OrderSide, OrderType, Fill };
+export type { Fill, Order, OrderSide, OrderStatus, OrderType };
 
 // API response types
 export interface OrderResponse extends Omit<Order, 'createdAt' | 'updatedAt' | 'queuedAt'> {

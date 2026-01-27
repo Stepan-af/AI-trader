@@ -1,7 +1,7 @@
 // Order API client
 
+import type { FillResponse, OrderResponse } from '@/types/order';
 import api from '../api';
-import type { OrderResponse, FillResponse } from '@/types/order';
 
 export const orderApi = {
   /**
