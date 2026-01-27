@@ -222,6 +222,7 @@ To scale the application:
 ### Docker Swarm / Kubernetes
 
 For orchestration, convert docker-compose.yml to:
+
 - Docker Swarm stack file
 - Kubernetes manifests (Deployment, Service, Ingress)
 
@@ -318,6 +319,7 @@ docker run --rm -v ai-trader_redis_data:/data -v $(pwd):/backup \
 ## Support
 
 For production issues:
+
 1. Check logs: `docker-compose logs -f`
 2. Review PRODUCTION_CHECKLIST.md for known blockers
 3. Verify all environment variables are set correctly

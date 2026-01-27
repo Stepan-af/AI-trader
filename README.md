@@ -207,7 +207,7 @@ apps/
       strategy/      # Strategy management domain
       backtest/      # Backtesting engine
       monitoring/    # Health checks and metrics
-  
+
   web/               # Frontend application (Next.js + React)
     src/
       app/           # Next.js app directory (routes)

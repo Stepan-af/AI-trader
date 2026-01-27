@@ -49,7 +49,7 @@ echo "Checking environment variables..."
 
 if [ -f ".env" ]; then
     echo "✅ .env file exists"
-    
+
     # Check for critical env vars
     if grep -q "JWT_SECRET=.*-secret-" .env || ! grep -q "JWT_SECRET=" .env; then
         echo "⚠️  WARNING: JWT_SECRET appears to be default or missing"
