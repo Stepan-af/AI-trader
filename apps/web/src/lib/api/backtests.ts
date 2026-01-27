@@ -1,7 +1,7 @@
 // Backtest API client
 
+import type { BacktestResponse, CreateBacktestRequest } from '@/types/backtest';
 import api from '../api';
-import type { CreateBacktestRequest, BacktestResponse } from '@/types/backtest';
 
 export const backtestApi = {
   /**

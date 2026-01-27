@@ -1,21 +1,21 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
-import { Plus, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
-import { Alert } from '@/components/ui/Alert';
-import { Badge } from '@/components/ui/Badge';
-import { PageLoading } from '@/components/ui/LoadingSpinner';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { BacktestForm } from '@/components/backtests/BacktestForm';
 import { BacktestResults } from '@/components/backtests/BacktestResults';
+import { Alert } from '@/components/ui/Alert';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { PageLoading } from '@/components/ui/LoadingSpinner';
+import { Modal } from '@/components/ui/Modal';
+import { useAuth } from '@/hooks/useAuth';
 import { backtestApi } from '@/lib/api/backtests';
 import { strategyApi } from '@/lib/api/strategies';
 import type { BacktestFormData, BacktestResponse } from '@/types/backtest';
 import type { Strategy } from '@/types/strategy';
+import { Plus, RefreshCw } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 export default function BacktestsPage() {
   const { auth } = useAuth();
@@ -240,7 +240,9 @@ export default function BacktestsPage() {
             {(selectedBacktest.status === 'RUNNING' || selectedBacktest.status === 'PENDING') && (
               <div className="flex justify-center">
                 <Button onClick={handleRefreshBacktest} disabled={isLoadingBacktest}>
-                  <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingBacktest ? 'animate-spin' : ''}`} />
+                  <RefreshCw
+                    className={`h-4 w-4 mr-2 ${isLoadingBacktest ? 'animate-spin' : ''}`}
+                  />
                   {isLoadingBacktest ? 'Refreshing...' : 'Refresh Status'}
                 </Button>
               </div>

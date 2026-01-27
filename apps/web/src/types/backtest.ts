@@ -1,8 +1,8 @@
 // Backtest types - extends shared domain types with API-specific fields
 
-import type { BacktestRun, BacktestResult, BacktestStatus } from '@ai-trader/shared';
+import type { BacktestResult, BacktestRun, BacktestStatus } from '@ai-trader/shared';
 
-export type { BacktestRun, BacktestResult, BacktestStatus };
+export type { BacktestResult, BacktestRun, BacktestStatus };
 
 // API request/response types
 export interface CreateBacktestRequest {

@@ -1,8 +1,7 @@
 'use client';
 
-import React from 'react';
 import { Badge } from '@/components/ui/Badge';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import type { BacktestResponse } from '@/types/backtest';
 
 interface BacktestResultsProps {
