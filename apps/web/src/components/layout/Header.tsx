@@ -1,5 +1,6 @@
 'use client';
 
+import { KillSwitchBanner } from '@/components/monitoring/KillSwitchBanner';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/hooks/useAuth';
 import { LogOut, Menu } from 'lucide-react';
@@ -58,6 +59,11 @@ export function Header() {
           </div>
         </div>
       </header>
+
+      {/* Kill Switch Banner */}
+      <div className="container mx-auto px-4 pt-4">
+        <KillSwitchBanner />
+      </div>
 
       {/* Mobile Sidebar */}
       <Sidebar

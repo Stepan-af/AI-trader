@@ -10,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/Table';
+import { useKillSwitch } from '@/hooks/useKillSwitch';
 import type { Strategy } from '@/types/strategy';
 import { Edit, Play, Square, Trash2 } from 'lucide-react';
 
@@ -22,6 +23,8 @@ interface StrategyListProps {
 }
 
 export function StrategyList({ strategies, onEdit, onDelete, onStart, onStop }: StrategyListProps) {
+  const { isActive: killSwitchActive } = useKillSwitch();
+
   const getStatusVariant = (status: string) => {
     switch (status) {
       case 'RUNNING':
@@ -40,7 +43,9 @@ export function StrategyList({ strategies, onEdit, onDelete, onStart, onStop }: 
   };
 
   const canStart = (strategy: Strategy) => {
-    return strategy.status === 'STOPPED' || strategy.status === 'DRAFT';
+    return (
+      !killSwitchActive && (strategy.status === 'STOPPED' || strategy.status === 'DRAFT')
+    );
   };
 
   const canStop = (strategy: Strategy) => {
@@ -91,12 +96,17 @@ export function StrategyList({ strategies, onEdit, onDelete, onStart, onStop }: 
             </TableCell>
             <TableCell className="text-right">
               <div className="flex gap-2 justify-end">
-                {canStart(strategy) && (
+                {(strategy.status === 'STOPPED' || strategy.status === 'DRAFT') && (
                   <Button
                     size="sm"
                     variant="default"
                     onClick={() => onStart(strategy)}
-                    title="Start strategy"
+                    disabled={!canStart(strategy)}
+                    title={
+                      killSwitchActive
+                        ? 'Emergency stop active - contact administrator'
+                        : 'Start strategy'
+                    }
                   >
                     <Play className="h-4 w-4 mr-1" />
                     Start
