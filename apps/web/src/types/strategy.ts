@@ -3,20 +3,13 @@
 import type {
   Strategy,
   StrategyConfig,
-  StrategyType,
   StrategyStatus,
-  TradingMode,
+  StrategyType,
   Timeframe,
+  TradingMode,
 } from '@ai-trader/shared';
 
-export type {
-  Strategy,
-  StrategyConfig,
-  StrategyType,
-  StrategyStatus,
-  TradingMode,
-  Timeframe,
-};
+export type { Strategy, StrategyConfig, StrategyStatus, StrategyType, Timeframe, TradingMode };
 
 // API request/response types
 export interface CreateStrategyRequest {
@@ -24,6 +17,15 @@ export interface CreateStrategyRequest {
   type: StrategyType;
   symbol: string;
   timeframe: Timeframe;
+  dca?: {
+    intervalSeconds: number;
+    amountPerOrder: number;
+  };
+  grid?: {
+    lowerBound: number;
+    upperBound: number;
+    gridLevels: number;
+  };
   swing?: {
     entryRule: string;
     exitRule: string;
@@ -40,7 +42,16 @@ export interface StrategyFormData {
   type: StrategyType;
   symbol: string;
   timeframe: Timeframe;
+  // DCA fields
+  intervalSeconds: string;
+  amountPerOrder: string;
+  // GRID fields
+  lowerBound: string;
+  upperBound: string;
+  gridLevels: string;
+  // SWING fields
   entryRule: string;
   exitRule: string;
+  // Risk fields
   maxPositionSize: string;
 }

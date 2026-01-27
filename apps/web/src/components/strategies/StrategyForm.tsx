@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import type { Strategy, StrategyType, Timeframe, StrategyFormData } from '@/types/strategy';
+import type { Strategy, StrategyFormData, StrategyType, Timeframe } from '@/types/strategy';
+import React, { useState } from 'react';
 
 interface StrategyFormProps {
   strategy?: Strategy;
@@ -20,8 +20,17 @@ export function StrategyForm({ strategy, onSubmit, onCancel }: StrategyFormProps
     type: strategy?.config.type || 'SWING',
     symbol: strategy?.config.symbol || 'BTCUSDT',
     timeframe: strategy?.config.timeframe || '1m',
+    // DCA fields
+    intervalSeconds: strategy?.config.dca?.intervalSeconds.toString() || '3600',
+    amountPerOrder: strategy?.config.dca?.amountPerOrder.toString() || '100',
+    // GRID fields
+    lowerBound: strategy?.config.grid?.lowerBound.toString() || '30000',
+    upperBound: strategy?.config.grid?.upperBound.toString() || '50000',
+    gridLevels: strategy?.config.grid?.gridLevels.toString() || '10',
+    // SWING fields
     entryRule: strategy?.config.swing?.entryRule || '',
     exitRule: strategy?.config.swing?.exitRule || '',
+    // Risk fields
     maxPositionSize: strategy?.config.risk.maxPositionSize.toString() || '0.01',
   });
 
@@ -43,7 +52,7 @@ export function StrategyForm({ strategy, onSubmit, onCancel }: StrategyFormProps
   };
 
   const handleChange = (field: keyof StrategyFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
@@ -108,6 +117,89 @@ export function StrategyForm({ strategy, onSubmit, onCancel }: StrategyFormProps
         </select>
       </div>
 
+      {/* DCA Strategy Fields */}
+      {formData.type === 'DCA' && (
+        <>
+          <div>
+            <label className="block text-sm font-medium mb-1">Interval Seconds</label>
+            <Input
+              type="number"
+              step="1"
+              min="1"
+              value={formData.intervalSeconds}
+              onChange={(e) => handleChange('intervalSeconds', e.target.value)}
+              placeholder="3600"
+              required={formData.type === 'DCA'}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              How often to place orders (in seconds). Example: 3600 = 1 hour
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Amount Per Order</label>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.amountPerOrder}
+              onChange={(e) => handleChange('amountPerOrder', e.target.value)}
+              placeholder="100"
+              required={formData.type === 'DCA'}
+            />
+            <p className="text-xs text-gray-500 mt-1">Amount in quote currency per DCA order</p>
+          </div>
+        </>
+      )}
+
+      {/* GRID Strategy Fields */}
+      {formData.type === 'GRID' && (
+        <>
+          <div>
+            <label className="block text-sm font-medium mb-1">Lower Bound</label>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.lowerBound}
+              onChange={(e) => handleChange('lowerBound', e.target.value)}
+              placeholder="30000"
+              required={formData.type === 'GRID'}
+            />
+            <p className="text-xs text-gray-500 mt-1">Lower price boundary for the grid</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Upper Bound</label>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.upperBound}
+              onChange={(e) => handleChange('upperBound', e.target.value)}
+              placeholder="50000"
+              required={formData.type === 'GRID'}
+            />
+            <p className="text-xs text-gray-500 mt-1">Upper price boundary for the grid</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Grid Levels</label>
+            <Input
+              type="number"
+              step="1"
+              min="2"
+              value={formData.gridLevels}
+              onChange={(e) => handleChange('gridLevels', e.target.value)}
+              placeholder="10"
+              required={formData.type === 'GRID'}
+            />
+            <p className="text-xs text-gray-500 mt-1">Number of price levels in the grid</p>
+          </div>
+        </>
+      )}
+
+      {/* SWING Strategy Fields */}
       {formData.type === 'SWING' && (
         <>
           <div>
@@ -133,9 +225,7 @@ export function StrategyForm({ strategy, onSubmit, onCancel }: StrategyFormProps
               placeholder="RSI > 60"
               required={formData.type === 'SWING'}
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Example: RSI &gt; 60
-            </p>
+            <p className="text-xs text-gray-500 mt-1">Example: RSI &gt; 60</p>
           </div>
         </>
       )}
@@ -150,9 +240,7 @@ export function StrategyForm({ strategy, onSubmit, onCancel }: StrategyFormProps
           placeholder="0.01"
           required
         />
-        <p className="text-xs text-gray-500 mt-1">
-          Maximum position size in base currency
-        </p>
+        <p className="text-xs text-gray-500 mt-1">Maximum position size in base currency</p>
       </div>
 
       <div className="flex gap-2 justify-end pt-4">

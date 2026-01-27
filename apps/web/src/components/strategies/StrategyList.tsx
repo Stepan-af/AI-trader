@@ -1,11 +1,17 @@
 'use client';
 
-import React from 'react';
-import { Trash2, Edit } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
+import { Button } from '@/components/ui/Button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/Table';
 import type { Strategy } from '@/types/strategy';
+import { Edit, Trash2 } from 'lucide-react';
 
 interface StrategyListProps {
   strategies: Strategy[];

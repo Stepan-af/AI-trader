@@ -1,11 +1,7 @@
 // Strategy API client
 
+import type { CreateStrategyRequest, Strategy, UpdateStrategyRequest } from '@/types/strategy';
 import api from '../api';
-import type {
-  Strategy,
-  CreateStrategyRequest,
-  UpdateStrategyRequest,
-} from '@/types/strategy';
 
 export const strategyApi = {
   /**

@@ -1,18 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
-import { Plus } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
-import { Alert } from '@/components/ui/Alert';
-import { LoadingSpinner, PageLoading } from '@/components/ui/LoadingSpinner';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { StrategyList } from '@/components/strategies/StrategyList';
 import { StrategyForm } from '@/components/strategies/StrategyForm';
+import { StrategyList } from '@/components/strategies/StrategyList';
+import { Alert } from '@/components/ui/Alert';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { LoadingSpinner, PageLoading } from '@/components/ui/LoadingSpinner';
+import { Modal } from '@/components/ui/Modal';
+import { useAuth } from '@/hooks/useAuth';
 import { strategyApi } from '@/lib/api/strategies';
-import type { Strategy, StrategyFormData, CreateStrategyRequest } from '@/types/strategy';
+import type { CreateStrategyRequest, Strategy, StrategyFormData } from '@/types/strategy';
+import { Plus } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 export default function StrategiesPage() {
   const { auth } = useAuth();
@@ -66,7 +66,18 @@ export default function StrategiesPage() {
       },
     };
 
-    if (formData.type === 'SWING') {
+    if (formData.type === 'DCA') {
+      payload.dca = {
+        intervalSeconds: parseInt(formData.intervalSeconds, 10),
+        amountPerOrder: parseFloat(formData.amountPerOrder),
+      };
+    } else if (formData.type === 'GRID') {
+      payload.grid = {
+        lowerBound: parseFloat(formData.lowerBound),
+        upperBound: parseFloat(formData.upperBound),
+        gridLevels: parseInt(formData.gridLevels, 10),
+      };
+    } else if (formData.type === 'SWING') {
       payload.swing = {
         entryRule: formData.entryRule,
         exitRule: formData.exitRule,
@@ -93,7 +104,18 @@ export default function StrategiesPage() {
       },
     };
 
-    if (formData.type === 'SWING') {
+    if (formData.type === 'DCA') {
+      payload.dca = {
+        intervalSeconds: parseInt(formData.intervalSeconds, 10),
+        amountPerOrder: parseFloat(formData.amountPerOrder),
+      };
+    } else if (formData.type === 'GRID') {
+      payload.grid = {
+        lowerBound: parseFloat(formData.lowerBound),
+        upperBound: parseFloat(formData.upperBound),
+        gridLevels: parseInt(formData.gridLevels, 10),
+      };
+    } else if (formData.type === 'SWING') {
       payload.swing = {
         entryRule: formData.entryRule,
         exitRule: formData.exitRule,
@@ -190,7 +212,10 @@ export default function StrategiesPage() {
         title="Create New Strategy"
         size="lg"
       >
-        <StrategyForm onSubmit={handleCreateStrategy} onCancel={() => setIsCreateModalOpen(false)} />
+        <StrategyForm
+          onSubmit={handleCreateStrategy}
+          onCancel={() => setIsCreateModalOpen(false)}
+        />
       </Modal>
 
       {/* Edit Strategy Modal */}
