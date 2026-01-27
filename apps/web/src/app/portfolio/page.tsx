@@ -5,13 +5,16 @@ import { PositionsTable } from '@/components/portfolio/PositionsTable';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { PageLoading } from '@/components/ui/LoadingSpinner';
+import { OverviewCardSkeleton, TableSkeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { portfolioApi } from '@/lib/api/portfolio';
+import { retryWithBackoff } from '@/lib/retry';
 import type { WebSocketEvent } from '@/lib/websocket';
 import type { PortfolioOverview, Position } from '@/types/portfolio';
-import { RefreshCw } from 'lucide-react';
+import { TrendingUp, RefreshCw, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -25,6 +28,7 @@ export default function PortfolioPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     if (!auth.isLoading && !auth.isAuthenticated) {
@@ -65,16 +69,29 @@ export default function PortfolioPage() {
       setIsLoading(true);
       setError(null);
 
-      // Load overview and positions in parallel
-      const [overviewData, positionsData] = await Promise.all([
-        portfolioApi.getOverview(),
-        portfolioApi.getPositions(),
-      ]);
+      // Load with retry logic
+      const [overviewData, positionsData] = await retryWithBackoff(
+        async () => {
+          return await Promise.all([portfolioApi.getOverview(), portfolioApi.getPositions()]);
+        },
+        {
+          maxAttempts: 3,
+          onRetry: (attempt) => {
+            console.log(`Retrying portfolio data load (attempt ${attempt})`);
+            setRetryCount(attempt);
+          },
+        }
+      );
 
       setOverview(overviewData);
       setPositions(positionsData.positions);
+      setRetryCount(0);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load portfolio data');
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : 'Unable to load portfolio data. Please check your connection and try again.';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -93,7 +110,11 @@ export default function PortfolioPage() {
       setOverview(overviewData);
       setPositions(positionsData.positions);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to refresh portfolio data');
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : 'Unable to refresh portfolio data. Please try again.';
+      setError(errorMessage);
     } finally {
       setIsRefreshing(false);
     }
@@ -104,7 +125,36 @@ export default function PortfolioPage() {
   }
 
   if (isLoading) {
-    return <PageLoading />;
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold mb-4">Portfolio</h1>
+          {retryCount > 0 && (
+            <Alert variant="default">
+              <AlertCircle className="h-4 w-4" />
+              Retrying connection (attempt {retryCount})...
+            </Alert>
+          )}
+        </div>
+
+        <div className="space-y-6">
+          <Card>
+            <CardContent className="pt-6">
+              <OverviewCardSkeleton />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Open Positions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TableSkeleton rows={3} />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -118,7 +168,15 @@ export default function PortfolioPage() {
           </Button>
         </div>
 
-        {error && <Alert variant="destructive">{error}</Alert>}
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <div className="flex-1">{error}</div>
+            <Button variant="outline" size="sm" onClick={() => void loadPortfolioData()}>
+              Retry
+            </Button>
+          </Alert>
+        )}
       </div>
 
       <div className="space-y-6">
@@ -131,7 +189,15 @@ export default function PortfolioPage() {
             <CardTitle>Open Positions</CardTitle>
           </CardHeader>
           <CardContent>
-            <PositionsTable positions={positions} />
+            {positions.length > 0 ? (
+              <PositionsTable positions={positions} />
+            ) : (
+              <EmptyState
+                icon={TrendingUp}
+                title="No open positions"
+                description="You don't have any open positions yet. Start a strategy to begin trading."
+              />
+            )}
           </CardContent>
         </Card>
       </div>

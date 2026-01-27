@@ -5,14 +5,17 @@ import { OrdersTable } from '@/components/orders/OrdersTable';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner, PageLoading } from '@/components/ui/LoadingSpinner';
 import { Modal } from '@/components/ui/Modal';
+import { TableSkeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { orderApi } from '@/lib/api/orders';
+import { retryWithBackoff } from '@/lib/retry';
 import type { WebSocketEvent } from '@/lib/websocket';
 import type { FillResponse, OrderResponse } from '@/types/order';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, ShoppingCart, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -30,6 +33,7 @@ export default function OrdersPage() {
   const [isCanceling, setIsCanceling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   // Modal states
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
@@ -54,7 +58,7 @@ export default function OrdersPage() {
       if (event.type === 'ORDER_FILLED' || event.type === 'ORDER_PARTIALLY_FILLED') {
         // Refresh orders list when any order is filled
         void loadOrders();
-        
+
         // Show success notification
         const message =
           event.type === 'ORDER_FILLED'
@@ -73,14 +77,32 @@ export default function OrdersPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await orderApi.list();
+
+      const data = await retryWithBackoff(
+        async () => {
+          return await orderApi.list();
+        },
+        {
+          maxAttempts: 3,
+          onRetry: (attempt) => {
+            console.log(`Retrying orders load (attempt ${attempt})`);
+            setRetryCount(attempt);
+          },
+        }
+      );
+
       // Sort by createdAt descending (newest first)
       const sorted = data.sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       setOrders(sorted);
+      setRetryCount(0);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load orders');
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : 'Unable to load orders. Please check your connection and try again.';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -96,7 +118,9 @@ export default function OrdersPage() {
       );
       setOrders(sorted);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to refresh orders');
+      const errorMessage =
+        err instanceof Error ? err.message : 'Unable to refresh orders. Please try again.';
+      setError(errorMessage);
     } finally {
       setIsRefreshing(false);
     }
@@ -149,7 +173,28 @@ export default function OrdersPage() {
   }
 
   if (isLoading) {
-    return <PageLoading />;
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold mb-4">Orders</h1>
+          {retryCount > 0 && (
+            <Alert variant="default">
+              <AlertCircle className="h-4 w-4" />
+              Retrying connection (attempt {retryCount})...
+            </Alert>
+          )}
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Your Orders</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TableSkeleton rows={5} />
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -164,7 +209,15 @@ export default function OrdersPage() {
         </div>
 
         {successMessage && <Alert variant="success">{successMessage}</Alert>}
-        {error && <Alert variant="destructive">{error}</Alert>}
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <div className="flex-1">{error}</div>
+            <Button variant="outline" size="sm" onClick={() => void loadOrders()}>
+              Retry
+            </Button>
+          </Alert>
+        )}
       </div>
 
       <Card>
@@ -172,11 +225,19 @@ export default function OrdersPage() {
           <CardTitle>Your Orders</CardTitle>
         </CardHeader>
         <CardContent>
-          <OrdersTable
-            orders={orders}
-            onCancel={handleCancelClick}
-            onViewDetails={handleViewDetails}
-          />
+          {orders.length > 0 ? (
+            <OrdersTable
+              orders={orders}
+              onCancel={handleCancelClick}
+              onViewDetails={handleViewDetails}
+            />
+          ) : (
+            <EmptyState
+              icon={ShoppingCart}
+              title="No orders yet"
+              description="You haven't placed any orders yet. Orders will appear here once your strategies start executing."
+            />
+          )}
         </CardContent>
       </Card>
 

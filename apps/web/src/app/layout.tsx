@@ -1,3 +1,4 @@
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { AuthProvider } from '@/hooks/useAuth';
 import { KillSwitchProvider } from '@/hooks/useKillSwitch';
 import { WebSocketProvider } from '@/hooks/useWebSocket';
@@ -16,11 +17,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className={inter.className}>
-        <AuthProvider>
-          <KillSwitchProvider>
-            <WebSocketProvider>{children}</WebSocketProvider>
-          </KillSwitchProvider>
-        </AuthProvider>
+        <ErrorBoundary>
+          <AuthProvider>
+            <KillSwitchProvider>
+              <WebSocketProvider>{children}</WebSocketProvider>
+            </KillSwitchProvider>
+          </AuthProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );
