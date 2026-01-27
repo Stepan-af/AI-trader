@@ -8,7 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { LoadingSpinner, PageLoading } from '@/components/ui/LoadingSpinner';
 import { Modal } from '@/components/ui/Modal';
 import { useAuth } from '@/hooks/useAuth';
+import { useWebSocket } from '@/hooks/useWebSocket';
 import { orderApi } from '@/lib/api/orders';
+import type { WebSocketEvent } from '@/lib/websocket';
 import type { FillResponse, OrderResponse } from '@/types/order';
 import { RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -16,6 +18,7 @@ import { useEffect, useState } from 'react';
 
 export default function OrdersPage() {
   const { auth } = useAuth();
+  const { subscribe } = useWebSocket();
   const router = useRouter();
 
   const [orders, setOrders] = useState<OrderResponse[]>([]);
@@ -44,6 +47,27 @@ export default function OrdersPage() {
       void loadOrders();
     }
   }, [auth.isAuthenticated]);
+
+  // Subscribe to WebSocket events for real-time order updates
+  useEffect(() => {
+    const handleWebSocketEvent = (event: WebSocketEvent) => {
+      if (event.type === 'ORDER_FILLED' || event.type === 'ORDER_PARTIALLY_FILLED') {
+        // Refresh orders list when any order is filled
+        void loadOrders();
+        
+        // Show success notification
+        const message =
+          event.type === 'ORDER_FILLED'
+            ? `Order filled at ${event.price}`
+            : `Order partially filled: ${event.filled_quantity} filled`;
+        setSuccessMessage(message);
+        setTimeout(() => setSuccessMessage(null), 5000);
+      }
+    };
+
+    const unsubscribe = subscribe(handleWebSocketEvent);
+    return unsubscribe;
+  }, [subscribe]);
 
   const loadOrders = async () => {
     try {

@@ -1,5 +1,6 @@
 import { AuthProvider } from '@/hooks/useAuth';
 import { KillSwitchProvider } from '@/hooks/useKillSwitch';
+import { WebSocketProvider } from '@/hooks/useWebSocket';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
@@ -16,7 +17,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={inter.className}>
         <AuthProvider>
-          <KillSwitchProvider>{children}</KillSwitchProvider>
+          <KillSwitchProvider>
+            <WebSocketProvider>{children}</WebSocketProvider>
+          </KillSwitchProvider>
         </AuthProvider>
       </body>
     </html>

@@ -43,9 +43,7 @@ export function StrategyList({ strategies, onEdit, onDelete, onStart, onStop }: 
   };
 
   const canStart = (strategy: Strategy) => {
-    return (
-      !killSwitchActive && (strategy.status === 'STOPPED' || strategy.status === 'DRAFT')
-    );
+    return !killSwitchActive && (strategy.status === 'STOPPED' || strategy.status === 'DRAFT');
   };
 
   const canStop = (strategy: Strategy) => {

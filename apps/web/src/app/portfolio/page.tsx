@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { PageLoading } from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/hooks/useAuth';
+import { useWebSocket } from '@/hooks/useWebSocket';
 import { portfolioApi } from '@/lib/api/portfolio';
+import type { WebSocketEvent } from '@/lib/websocket';
 import type { PortfolioOverview, Position } from '@/types/portfolio';
 import { RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -15,6 +17,7 @@ import { useEffect, useState } from 'react';
 
 export default function PortfolioPage() {
   const { auth } = useAuth();
+  const { subscribe } = useWebSocket();
   const router = useRouter();
 
   const [overview, setOverview] = useState<PortfolioOverview | null>(null);
@@ -34,6 +37,28 @@ export default function PortfolioPage() {
       void loadPortfolioData();
     }
   }, [auth.isAuthenticated]);
+
+  // Subscribe to WebSocket events for real-time portfolio updates
+  useEffect(() => {
+    const handleWebSocketEvent = (event: WebSocketEvent) => {
+      if (event.type === 'PORTFOLIO_UPDATED') {
+        // Update overview with real-time data
+        setOverview((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            balance: event.balance,
+            unrealizedPnl: event.unrealized_pnl,
+            dataAsOfTimestamp: event.data_as_of_timestamp,
+            isStale: event.is_stale,
+          };
+        });
+      }
+    };
+
+    const unsubscribe = subscribe(handleWebSocketEvent);
+    return unsubscribe;
+  }, [subscribe]);
 
   const loadPortfolioData = async () => {
     try {
