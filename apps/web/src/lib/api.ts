@@ -1,10 +1,10 @@
-import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
 import type {
   LoginRequest,
   LoginResponse,
   RefreshTokenRequest,
   RefreshTokenResponse,
 } from '@ai-trader/shared';
+import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
 
@@ -106,7 +106,10 @@ export const authApi = {
   },
 
   async refreshToken(refreshTokenRequest: RefreshTokenRequest): Promise<RefreshTokenResponse> {
-    const response: AxiosResponse<RefreshTokenResponse> = await api.post('/auth/refresh', refreshTokenRequest);
+    const response: AxiosResponse<RefreshTokenResponse> = await api.post(
+      '/auth/refresh',
+      refreshTokenRequest
+    );
     return response.data;
   },
 };

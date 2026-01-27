@@ -63,10 +63,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setAuth(prev => ({ ...prev, isLoading: true }));
 
       const response = await authApi.login(credentials);
-      
+
       // Store tokens
       TokenManager.setTokens(response.accessToken, response.refreshToken, response.expiresIn);
-      
+
       // TODO: In a real app, decode JWT to get user info
       // For MVP, we'll use placeholder values
       const user: User = {

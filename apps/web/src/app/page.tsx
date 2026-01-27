@@ -1,10 +1,14 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/Alert';
+import { PageLoading } from '@/components/ui/LoadingSpinner';
+import { useAuth } from '@/hooks/useAuth';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function HomePage() {
   const { auth } = useAuth();
@@ -17,13 +21,7 @@ export default function HomePage() {
   }, [auth.isLoading, auth.isAuthenticated, router]);
 
   if (auth.isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-pulse text-lg">Loading...</div>
-        </div>
-      </div>
-    );
+    return <PageLoading text="Loading dashboard..." />;
   }
 
   if (!auth.isAuthenticated) {
@@ -34,61 +32,114 @@ export default function HomePage() {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <header className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-foreground mb-4">
-              Welcome to AI Trader
-            </h1>
-            <p className="text-lg text-muted-foreground">
-              Automated trading strategies, backtesting, and portfolio management
+        <div className="max-w-6xl mx-auto space-y-8">
+          {/* Welcome Section */}
+          <div className="text-center space-y-4">
+            <h1 className="text-4xl font-bold text-foreground">Welcome to AI Trader</h1>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Your comprehensive platform for automated trading strategies, backtesting, and portfolio management.
             </p>
-          </header>
+          </div>
 
+          {/* Status Alert */}
+          <Alert variant="success">
+            <AlertTitle>System Status</AlertTitle>
+            <AlertDescription>
+              Authentication system is active. All UI components are loaded and ready for trading features.
+            </AlertDescription>
+          </Alert>
+
+          {/* Feature Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="bg-card p-6 rounded-lg border">
-              <h3 className="text-xl font-semibold mb-3">Strategy Management</h3>
-              <p className="text-muted-foreground mb-4">
-                Create and manage DCA, Grid, and Rule-based trading strategies
-              </p>
-              <Button variant="outline" className="w-full" disabled>
-                Coming Soon
-              </Button>
-            </div>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xl">Strategies</CardTitle>
+                  <Badge variant="outline">Coming Soon</Badge>
+                </div>
+                <CardDescription>
+                  Create and manage DCA, Grid, and Rule-based trading strategies
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" className="w-full" disabled>
+                  Manage Strategies
+                </Button>
+              </CardContent>
+            </Card>
 
-            <div className="bg-card p-6 rounded-lg border">
-              <h3 className="text-xl font-semibold mb-3">Backtesting</h3>
-              <p className="text-muted-foreground mb-4">
-                Test strategies on historical data with detailed metrics
-              </p>
-              <Button variant="outline" className="w-full" disabled>
-                Coming Soon
-              </Button>
-            </div>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xl">Backtesting</CardTitle>
+                  <Badge variant="outline">Coming Soon</Badge>
+                </div>
+                <CardDescription>
+                  Test strategies on historical data with comprehensive metrics
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" className="w-full" disabled>
+                  Run Backtest
+                </Button>
+              </CardContent>
+            </Card>
 
-            <div className="bg-card p-6 rounded-lg border">
-              <h3 className="text-xl font-semibold mb-3">Portfolio</h3>
-              <p className="text-muted-foreground mb-4">
-                Monitor positions, PnL, and trading performance
-              </p>
-              <Button variant="outline" className="w-full" disabled>
-                Coming Soon
-              </Button>
-            </div>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xl">Portfolio</CardTitle>
+                  <Badge variant="outline">Coming Soon</Badge>
+                </div>
+                <CardDescription>
+                  Monitor positions, PnL, and trading performance in real-time
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" className="w-full" disabled>
+                  View Portfolio
+                </Button>
+              </CardContent>
+            </Card>
           </div>
 
-          <div className="mt-12 text-center">
-            <div className="bg-card p-6 rounded-lg border">
-              <h3 className="text-lg font-semibold mb-3 text-green-600">
-                ✅ Authentication System Active
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                User: {auth.user?.email} | Status: Authenticated
-              </p>
-              <p className="text-xs text-muted-foreground mt-2">
-                MVP Development Phase - Auth and API client implemented
-              </p>
-            </div>
-          </div>
+          {/* Development Status */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg text-green-600">
+                ✅ UI Component Library Complete
+              </CardTitle>
+              <CardDescription>
+                All essential components are now available for building trading features
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="flex flex-col items-center space-y-2">
+                  <Badge variant="success">Auth</Badge>
+                  <span className="text-xs text-muted-foreground">Complete</span>
+                </div>
+                <div className="flex flex-col items-center space-y-2">
+                  <Badge variant="success">UI Kit</Badge>
+                  <span className="text-xs text-muted-foreground">Complete</span>
+                </div>
+                <div className="flex flex-col items-center space-y-2">
+                  <Badge variant="warning">Features</Badge>
+                  <span className="text-xs text-muted-foreground">Next Phase</span>
+                </div>
+                <div className="flex flex-col items-center space-y-2">
+                  <Badge variant="outline">Trading</Badge>
+                  <span className="text-xs text-muted-foreground">Upcoming</span>
+                </div>
+              </div>
+              
+              <div className="text-sm text-muted-foreground">
+                <strong>User:</strong> {auth.user?.email} | <strong>Status:</strong> Authenticated
+                <br />
+                <strong>Phase:</strong> Foundation Complete - Ready for Feature Development
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>
