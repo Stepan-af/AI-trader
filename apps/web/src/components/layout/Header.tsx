@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/hooks/useAuth';
+import { LogOut, Menu } from 'lucide-react';
+import { useState } from 'react';
 import { Navigation } from './Navigation';
 import { Sidebar } from './Sidebar';
-import { LogOut, Menu } from 'lucide-react';
 
 export function Header() {
   const { auth, logout } = useAuth();
@@ -29,18 +29,18 @@ export function Header() {
             >
               <Menu className="h-4 w-4" />
             </Button>
-            
+
             {/* Logo */}
             <div className="flex items-center space-x-4">
               <h1 className="text-xl font-bold">AI Trader</h1>
             </div>
-            
+
             {/* Desktop Navigation */}
             <div className="hidden md:block">
               <Navigation />
             </div>
           </div>
-          
+
           {/* User menu */}
           <div className="flex items-center space-x-4">
             <span className="text-sm text-muted-foreground hidden sm:block">
@@ -58,10 +58,10 @@ export function Header() {
           </div>
         </div>
       </header>
-      
+
       {/* Mobile Sidebar */}
-      <Sidebar 
-        isOpen={isSidebarOpen} 
+      <Sidebar
+        isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
         className="md:hidden"
       />

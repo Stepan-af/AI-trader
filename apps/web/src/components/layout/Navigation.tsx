@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { BarChart3, TrendingUp, Wallet, PieChart } from 'lucide-react';
+import { BarChart3, PieChart, TrendingUp, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -25,7 +25,7 @@ export function Navigation({ className }: NavigationProps) {
       {navigation.map((item) => {
         const isActive = pathname === item.href;
         const Icon = item.icon;
-        
+
         return (
           <Link
             key={item.name}
@@ -52,7 +52,7 @@ export function MobileNavigation({ className }: NavigationProps) {
       {navigation.map((item) => {
         const isActive = pathname === item.href;
         const Icon = item.icon;
-        
+
         return (
           <Link
             key={item.name}

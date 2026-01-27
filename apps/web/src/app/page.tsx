@@ -1,10 +1,10 @@
 'use client';
 
 import { Header } from '@/components/layout/Header';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/Alert';
+import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/Alert';
 import { PageLoading } from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
@@ -37,7 +37,8 @@ export default function HomePage() {
           <div className="text-center space-y-4">
             <h1 className="text-4xl font-bold text-foreground">Welcome to AI Trader</h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Your comprehensive platform for automated trading strategies, backtesting, and portfolio management.
+              Your comprehensive platform for automated trading strategies, backtesting, and
+              portfolio management.
             </p>
           </div>
 
@@ -45,7 +46,8 @@ export default function HomePage() {
           <Alert variant="success">
             <AlertTitle>System Status</AlertTitle>
             <AlertDescription>
-              Authentication system is active. All UI components are loaded and ready for trading features.
+              Authentication system is active. All UI components are loaded and ready for trading
+              features.
             </AlertDescription>
           </Alert>
 
@@ -132,7 +134,7 @@ export default function HomePage() {
                   <span className="text-xs text-muted-foreground">Upcoming</span>
                 </div>
               </div>
-              
+
               <div className="text-sm text-muted-foreground">
                 <strong>User:</strong> {auth.user?.email} | <strong>Status:</strong> Authenticated
                 <br />

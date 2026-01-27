@@ -44,11 +44,8 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-background/80 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      
+      <div className="fixed inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
+
       {/* Modal */}
       <div className={cn('relative bg-card border rounded-lg shadow-lg', sizeClasses[size])}>
         {title && (
@@ -59,7 +56,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
             </Button>
           </div>
         )}
-        
+
         {!title && (
           <div className="absolute right-4 top-4">
             <Button variant="ghost" size="sm" onClick={onClose}>
@@ -67,10 +64,8 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
             </Button>
           </div>
         )}
-        
-        <div className={cn('p-6', !title && 'pt-12')}>
-          {children}
-        </div>
+
+        <div className={cn('p-6', !title && 'pt-12')}>{children}</div>
       </div>
     </div>
   );
