@@ -56,198 +56,208 @@ export function StrategyForm({ strategy, onSubmit, onCancel }: StrategyFormProps
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
           {error}
         </div>
       )}
 
-      <div>
-        <label className="block text-sm font-medium mb-1">Name</label>
-        <Input
-          type="text"
-          value={formData.name}
-          onChange={(e) => handleChange('name', e.target.value)}
-          placeholder="RSI Swing Strategy"
-          required
-        />
-      </div>
+      <div className="grid grid-cols-1 gap-4 sm:gap-6">
+        <div>
+          <label className="block text-sm font-medium mb-1">Name</label>
+          <Input
+            type="text"
+            value={formData.name}
+            onChange={(e) => handleChange('name', e.target.value)}
+            placeholder="RSI Swing Strategy"
+            required
+          />
+        </div>
 
-      <div>
-        <label className="block text-sm font-medium mb-1">Type</label>
-        <select
-          value={formData.type}
-          onChange={(e) => handleChange('type', e.target.value as StrategyType)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        >
-          {STRATEGY_TYPES.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium mb-1">Symbol</label>
-        <Input
-          type="text"
-          value={formData.symbol}
-          onChange={(e) => handleChange('symbol', e.target.value.toUpperCase())}
-          placeholder="BTCUSDT"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium mb-1">Timeframe</label>
-        <select
-          value={formData.timeframe}
-          onChange={(e) => handleChange('timeframe', e.target.value as Timeframe)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        >
-          {TIMEFRAMES.map((tf) => (
-            <option key={tf} value={tf}>
-              {tf}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* DCA Strategy Fields */}
-      {formData.type === 'DCA' && (
-        <>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Interval Seconds</label>
-            <Input
-              type="number"
-              step="1"
-              min="1"
-              value={formData.intervalSeconds}
-              onChange={(e) => handleChange('intervalSeconds', e.target.value)}
-              placeholder="3600"
-              required={formData.type === 'DCA'}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              How often to place orders (in seconds). Example: 3600 = 1 hour
-            </p>
+            <label className="block text-sm font-medium mb-1">Type</label>
+            <select
+              value={formData.type}
+              onChange={(e) => handleChange('type', e.target.value as StrategyType)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              {STRATEGY_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Amount Per Order</label>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              value={formData.amountPerOrder}
-              onChange={(e) => handleChange('amountPerOrder', e.target.value)}
-              placeholder="100"
-              required={formData.type === 'DCA'}
-            />
-            <p className="text-xs text-gray-500 mt-1">Amount in quote currency per DCA order</p>
-          </div>
-        </>
-      )}
-
-      {/* GRID Strategy Fields */}
-      {formData.type === 'GRID' && (
-        <>
-          <div>
-            <label className="block text-sm font-medium mb-1">Lower Bound</label>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              value={formData.lowerBound}
-              onChange={(e) => handleChange('lowerBound', e.target.value)}
-              placeholder="30000"
-              required={formData.type === 'GRID'}
-            />
-            <p className="text-xs text-gray-500 mt-1">Lower price boundary for the grid</p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Upper Bound</label>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              value={formData.upperBound}
-              onChange={(e) => handleChange('upperBound', e.target.value)}
-              placeholder="50000"
-              required={formData.type === 'GRID'}
-            />
-            <p className="text-xs text-gray-500 mt-1">Upper price boundary for the grid</p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Grid Levels</label>
-            <Input
-              type="number"
-              step="1"
-              min="2"
-              value={formData.gridLevels}
-              onChange={(e) => handleChange('gridLevels', e.target.value)}
-              placeholder="10"
-              required={formData.type === 'GRID'}
-            />
-            <p className="text-xs text-gray-500 mt-1">Number of price levels in the grid</p>
-          </div>
-        </>
-      )}
-
-      {/* SWING Strategy Fields */}
-      {formData.type === 'SWING' && (
-        <>
-          <div>
-            <label className="block text-sm font-medium mb-1">Entry Rule</label>
+            <label className="block text-sm font-medium mb-1">Symbol</label>
             <Input
               type="text"
-              value={formData.entryRule}
-              onChange={(e) => handleChange('entryRule', e.target.value)}
-              placeholder="RSI < 30 AND CLOSE > SMA(200)"
-              required={formData.type === 'SWING'}
+              value={formData.symbol}
+              onChange={(e) => handleChange('symbol', e.target.value.toUpperCase())}
+              placeholder="BTCUSDT"
+              required
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Example: RSI &lt; 30 AND CLOSE &gt; SMA(200)
-            </p>
           </div>
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Exit Rule</label>
-            <Input
-              type="text"
-              value={formData.exitRule}
-              onChange={(e) => handleChange('exitRule', e.target.value)}
-              placeholder="RSI > 60"
-              required={formData.type === 'SWING'}
-            />
-            <p className="text-xs text-gray-500 mt-1">Example: RSI &gt; 60</p>
-          </div>
-        </>
-      )}
+        <div>
+          <label className="block text-sm font-medium mb-1">Timeframe</label>
+          <select
+            value={formData.timeframe}
+            onChange={(e) => handleChange('timeframe', e.target.value as Timeframe)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          >
+            {TIMEFRAMES.map((tf) => (
+              <option key={tf} value={tf}>
+                {tf}
+              </option>
+            ))}
+          </select>
+        </div>
 
-      <div>
-        <label className="block text-sm font-medium mb-1">Max Position Size</label>
-        <Input
-          type="number"
-          step="0.001"
-          value={formData.maxPositionSize}
-          onChange={(e) => handleChange('maxPositionSize', e.target.value)}
-          placeholder="0.01"
-          required
-        />
-        <p className="text-xs text-gray-500 mt-1">Maximum position size in base currency</p>
+        {/* DCA Strategy Fields */}
+        {formData.type === 'DCA' && (
+          <>
+            <div>
+              <label className="block text-sm font-medium mb-1">Interval Seconds</label>
+              <Input
+                type="number"
+                step="1"
+                min="1"
+                value={formData.intervalSeconds}
+                onChange={(e) => handleChange('intervalSeconds', e.target.value)}
+                placeholder="3600"
+                required={formData.type === 'DCA'}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                How often to place orders (in seconds). Example: 3600 = 1 hour
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Amount Per Order</label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.amountPerOrder}
+                onChange={(e) => handleChange('amountPerOrder', e.target.value)}
+                placeholder="100"
+                required={formData.type === 'DCA'}
+              />
+              <p className="text-xs text-gray-500 mt-1">Amount in quote currency per DCA order</p>
+            </div>
+          </>
+        )}
+
+        {/* GRID Strategy Fields */}
+        {formData.type === 'GRID' && (
+          <>
+            <div>
+              <label className="block text-sm font-medium mb-1">Lower Bound</label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.lowerBound}
+                onChange={(e) => handleChange('lowerBound', e.target.value)}
+                placeholder="30000"
+                required={formData.type === 'GRID'}
+              />
+              <p className="text-xs text-gray-500 mt-1">Lower price boundary for the grid</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Upper Bound</label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.upperBound}
+                onChange={(e) => handleChange('upperBound', e.target.value)}
+                placeholder="50000"
+                required={formData.type === 'GRID'}
+              />
+              <p className="text-xs text-gray-500 mt-1">Upper price boundary for the grid</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Grid Levels</label>
+              <Input
+                type="number"
+                step="1"
+                min="2"
+                value={formData.gridLevels}
+                onChange={(e) => handleChange('gridLevels', e.target.value)}
+                placeholder="10"
+                required={formData.type === 'GRID'}
+              />
+              <p className="text-xs text-gray-500 mt-1">Number of price levels in the grid</p>
+            </div>
+          </>
+        )}
+
+        {/* SWING Strategy Fields */}
+        {formData.type === 'SWING' && (
+          <>
+            <div>
+              <label className="block text-sm font-medium mb-1">Entry Rule</label>
+              <Input
+                type="text"
+                value={formData.entryRule}
+                onChange={(e) => handleChange('entryRule', e.target.value)}
+                placeholder="RSI < 30 AND CLOSE > SMA(200)"
+                required={formData.type === 'SWING'}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Example: RSI &lt; 30 AND CLOSE &gt; SMA(200)
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Exit Rule</label>
+              <Input
+                type="text"
+                value={formData.exitRule}
+                onChange={(e) => handleChange('exitRule', e.target.value)}
+                placeholder="RSI > 60"
+                required={formData.type === 'SWING'}
+              />
+              <p className="text-xs text-gray-500 mt-1">Example: RSI &gt; 60</p>
+            </div>
+          </>
+        )}
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Max Position Size</label>
+          <Input
+            type="number"
+            step="0.001"
+            value={formData.maxPositionSize}
+            onChange={(e) => handleChange('maxPositionSize', e.target.value)}
+            placeholder="0.01"
+            required
+          />
+          <p className="text-xs text-gray-500 mt-1">Maximum position size in base currency</p>
+        </div>
       </div>
 
-      <div className="flex gap-2 justify-end pt-4">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+      <div className="flex flex-col sm:flex-row gap-2 justify-end pt-4">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={isSubmitting}
+          className="w-full sm:w-auto"
+        >
           Cancel
         </Button>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
           {isSubmitting ? 'Saving...' : strategy ? 'Update Strategy' : 'Create Strategy'}
         </Button>
       </div>

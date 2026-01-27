@@ -1,7 +1,9 @@
 'use client';
 
+import { StrategyCard } from '@/components/strategies/StrategyCard';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { ResponsiveTableWrapper } from '@/components/ui/ResponsiveTableWrapper';
 import {
   Table,
   TableBody,
@@ -59,91 +61,113 @@ export function StrategyList({ strategies, onEdit, onDelete, onStart, onStop }: 
   };
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>Type</TableHead>
-          <TableHead>Symbol</TableHead>
-          <TableHead>Timeframe</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Mode</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+    <>
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
         {strategies.map((strategy) => (
-          <TableRow key={strategy.id}>
-            <TableCell className="font-medium">{strategy.config.name}</TableCell>
-            <TableCell>
-              <Badge variant="outline">{strategy.config.type}</Badge>
-            </TableCell>
-            <TableCell>{strategy.config.symbol}</TableCell>
-            <TableCell>{strategy.config.timeframe}</TableCell>
-            <TableCell>
-              <Badge variant={getStatusVariant(strategy.status)}>{strategy.status}</Badge>
-            </TableCell>
-            <TableCell>
-              {strategy.mode ? (
-                <Badge variant={strategy.mode === 'LIVE' ? 'warning' : 'default'}>
-                  {strategy.mode}
-                </Badge>
-              ) : (
-                <span className="text-gray-400">-</span>
-              )}
-            </TableCell>
-            <TableCell className="text-right">
-              <div className="flex gap-2 justify-end">
-                {(strategy.status === 'STOPPED' || strategy.status === 'DRAFT') && (
-                  <Button
-                    size="sm"
-                    variant="default"
-                    onClick={() => onStart(strategy)}
-                    disabled={!canStart(strategy)}
-                    title={
-                      killSwitchActive
-                        ? 'Emergency stop active - contact administrator'
-                        : 'Start strategy'
-                    }
-                  >
-                    <Play className="h-4 w-4 mr-1" />
-                    Start
-                  </Button>
-                )}
-                {canStop(strategy) && (
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => onStop(strategy)}
-                    title="Stop strategy"
-                  >
-                    <Square className="h-4 w-4 mr-1" />
-                    Stop
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => onEdit(strategy)}
-                  disabled={!canEdit(strategy)}
-                  title="Edit strategy"
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => onDelete(strategy)}
-                  disabled={!canDelete(strategy)}
-                  title="Delete strategy"
-                >
-                  <Trash2 className="h-4 w-4 text-red-600" />
-                </Button>
-              </div>
-            </TableCell>
-          </TableRow>
+          <StrategyCard
+            key={strategy.id}
+            strategy={strategy}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onStart={onStart}
+            onStop={onStop}
+            killSwitchActive={killSwitchActive}
+          />
         ))}
-      </TableBody>
-    </Table>
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block">
+        <ResponsiveTableWrapper>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Symbol</TableHead>
+                <TableHead>Timeframe</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Mode</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {strategies.map((strategy) => (
+                <TableRow key={strategy.id}>
+                  <TableCell className="font-medium">{strategy.config.name}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{strategy.config.type}</Badge>
+                  </TableCell>
+                  <TableCell>{strategy.config.symbol}</TableCell>
+                  <TableCell>{strategy.config.timeframe}</TableCell>
+                  <TableCell>
+                    <Badge variant={getStatusVariant(strategy.status)}>{strategy.status}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    {strategy.mode ? (
+                      <Badge variant={strategy.mode === 'LIVE' ? 'warning' : 'default'}>
+                        {strategy.mode}
+                      </Badge>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex gap-2 justify-end">
+                      {(strategy.status === 'STOPPED' || strategy.status === 'DRAFT') && (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() => onStart(strategy)}
+                          disabled={!canStart(strategy)}
+                          title={
+                            killSwitchActive
+                              ? 'Emergency stop active - contact administrator'
+                              : 'Start strategy'
+                          }
+                        >
+                          <Play className="h-4 w-4 mr-1" />
+                          Start
+                        </Button>
+                      )}
+                      {canStop(strategy) && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => onStop(strategy)}
+                          title="Stop strategy"
+                        >
+                          <Square className="h-4 w-4 mr-1" />
+                          Stop
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onEdit(strategy)}
+                        disabled={!canEdit(strategy)}
+                        title="Edit strategy"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onDelete(strategy)}
+                        disabled={!canDelete(strategy)}
+                        title="Delete strategy"
+                      >
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </ResponsiveTableWrapper>
+      </div>
+    </>
   );
 }

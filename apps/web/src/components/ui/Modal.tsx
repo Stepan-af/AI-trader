@@ -42,30 +42,36 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
       {/* Backdrop */}
       <div className="fixed inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
-      <div className={cn('relative bg-card border rounded-lg shadow-lg', sizeClasses[size])}>
+      <div
+        className={cn(
+          'relative bg-card border rounded-lg shadow-lg w-full',
+          sizeClasses[size],
+          'max-h-[90vh] overflow-y-auto'
+        )}
+      >
         {title && (
-          <div className="flex items-center justify-between p-6 border-b">
-            <h2 className="text-lg font-semibold">{title}</h2>
-            <Button variant="ghost" size="sm" onClick={onClose}>
+          <div className="flex items-center justify-between p-4 sm:p-6 border-b sticky top-0 bg-card z-10">
+            <h2 className="text-base sm:text-lg font-semibold pr-8">{title}</h2>
+            <Button variant="ghost" size="sm" onClick={onClose} className="absolute right-2 top-2">
               <X className="h-4 w-4" />
             </Button>
           </div>
         )}
 
         {!title && (
-          <div className="absolute right-4 top-4">
+          <div className="absolute right-2 top-2 z-10">
             <Button variant="ghost" size="sm" onClick={onClose}>
               <X className="h-4 w-4" />
             </Button>
           </div>
         )}
 
-        <div className={cn('p-6', !title && 'pt-12')}>{children}</div>
+        <div className={cn('p-4 sm:p-6', !title && 'pt-12')}>{children}</div>
       </div>
     </div>
   );

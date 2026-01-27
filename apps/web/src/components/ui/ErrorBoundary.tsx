@@ -1,9 +1,9 @@
 'use client';
 
+import { AlertTriangle } from 'lucide-react';
 import { Component, type ReactNode } from 'react';
 import { Button } from './Button';
 import { Card, CardContent, CardHeader, CardTitle } from './Card';
-import { AlertTriangle } from 'lucide-react';
 
 interface ErrorBoundaryProps {
   children: ReactNode;

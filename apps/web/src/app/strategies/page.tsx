@@ -223,13 +223,13 @@ export default function StrategiesPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-3xl font-bold">Strategies</h1>
-          <Button onClick={() => setIsCreateModalOpen(true)}>
+    <div className="container mx-auto py-4 sm:py-8 px-4">
+      <div className="mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+          <h1 className="text-2xl sm:text-3xl font-bold">Strategies</h1>
+          <Button onClick={() => setIsCreateModalOpen(true)} className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
-            Create Strategy
+            <span className="sm:inline">Create Strategy</span>
           </Button>
         </div>
 
@@ -239,7 +239,7 @@ export default function StrategiesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Your Strategies</CardTitle>
+          <CardTitle className="text-lg sm:text-xl">Your Strategies</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (

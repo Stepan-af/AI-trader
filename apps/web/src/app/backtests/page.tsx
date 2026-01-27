@@ -120,11 +120,15 @@ export default function BacktestsPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-3xl font-bold">Backtests</h1>
-          <Button onClick={() => setIsCreateModalOpen(true)} disabled={strategies.length === 0}>
+    <div className="container mx-auto py-4 sm:py-8 px-4">
+      <div className="mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+          <h1 className="text-2xl sm:text-3xl font-bold">Backtests</h1>
+          <Button
+            onClick={() => setIsCreateModalOpen(true)}
+            disabled={strategies.length === 0}
+            className="w-full sm:w-auto"
+          >
             <Plus className="h-4 w-4 mr-2" />
             Start Backtest
           </Button>

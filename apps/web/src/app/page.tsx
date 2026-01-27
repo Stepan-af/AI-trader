@@ -31,12 +31,12 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto space-y-8">
+      <main className="container mx-auto px-4 py-6 sm:py-8">
+        <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
           {/* Welcome Section */}
-          <div className="text-center space-y-4">
-            <h1 className="text-4xl font-bold text-foreground">Welcome to AI Trader</h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <div className="text-center space-y-3 sm:space-y-4">
+            <h1 className="text-3xl sm:text-4xl font-bold text-foreground">Welcome to AI Trader</h1>
+            <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto px-4">
               Your comprehensive platform for automated trading strategies, backtesting, and
               portfolio management.
             </p>

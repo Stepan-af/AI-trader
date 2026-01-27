@@ -14,7 +14,7 @@ import { portfolioApi } from '@/lib/api/portfolio';
 import { retryWithBackoff } from '@/lib/retry';
 import type { WebSocketEvent } from '@/lib/websocket';
 import type { PortfolioOverview, Position } from '@/types/portfolio';
-import { TrendingUp, RefreshCw, AlertCircle } from 'lucide-react';
+import { AlertCircle, RefreshCw, TrendingUp } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -111,9 +111,7 @@ export default function PortfolioPage() {
       setPositions(positionsData.positions);
     } catch (err) {
       const errorMessage =
-        err instanceof Error
-          ? err.message
-          : 'Unable to refresh portfolio data. Please try again.';
+        err instanceof Error ? err.message : 'Unable to refresh portfolio data. Please try again.';
       setError(errorMessage);
     } finally {
       setIsRefreshing(false);
@@ -126,9 +124,9 @@ export default function PortfolioPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-8 px-4">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold mb-4">Portfolio</h1>
+      <div className="container mx-auto py-4 sm:py-8 px-4">
+        <div className="mb-4 sm:mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-4">Portfolio</h1>
           {retryCount > 0 && (
             <Alert variant="default">
               <AlertCircle className="h-4 w-4" />
@@ -158,11 +156,11 @@ export default function PortfolioPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-3xl font-bold">Portfolio</h1>
-          <Button onClick={handleRefresh} disabled={isRefreshing}>
+    <div className="container mx-auto py-4 sm:py-8 px-4">
+      <div className="mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+          <h1 className="text-2xl sm:text-3xl font-bold">Portfolio</h1>
+          <Button onClick={handleRefresh} disabled={isRefreshing} className="w-full sm:w-auto">
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             {isRefreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
