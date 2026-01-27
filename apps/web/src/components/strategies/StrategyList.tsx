@@ -11,15 +11,17 @@ import {
   TableRow,
 } from '@/components/ui/Table';
 import type { Strategy } from '@/types/strategy';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Play, Square, Trash2 } from 'lucide-react';
 
 interface StrategyListProps {
   strategies: Strategy[];
   onEdit: (strategy: Strategy) => void;
   onDelete: (strategy: Strategy) => void;
+  onStart: (strategy: Strategy) => void;
+  onStop: (strategy: Strategy) => void;
 }
 
-export function StrategyList({ strategies, onEdit, onDelete }: StrategyListProps) {
+export function StrategyList({ strategies, onEdit, onDelete, onStart, onStop }: StrategyListProps) {
   const getStatusVariant = (status: string) => {
     switch (status) {
       case 'RUNNING':
@@ -35,6 +37,22 @@ export function StrategyList({ strategies, onEdit, onDelete }: StrategyListProps
       default:
         return 'default';
     }
+  };
+
+  const canStart = (strategy: Strategy) => {
+    return strategy.status === 'STOPPED' || strategy.status === 'DRAFT';
+  };
+
+  const canStop = (strategy: Strategy) => {
+    return strategy.status === 'RUNNING';
+  };
+
+  const canEdit = (strategy: Strategy) => {
+    return strategy.status !== 'RUNNING' && strategy.status !== 'STARTING';
+  };
+
+  const canDelete = (strategy: Strategy) => {
+    return strategy.status !== 'RUNNING' && strategy.status !== 'STARTING';
   };
 
   return (
@@ -73,10 +91,33 @@ export function StrategyList({ strategies, onEdit, onDelete }: StrategyListProps
             </TableCell>
             <TableCell className="text-right">
               <div className="flex gap-2 justify-end">
+                {canStart(strategy) && (
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={() => onStart(strategy)}
+                    title="Start strategy"
+                  >
+                    <Play className="h-4 w-4 mr-1" />
+                    Start
+                  </Button>
+                )}
+                {canStop(strategy) && (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => onStop(strategy)}
+                    title="Stop strategy"
+                  >
+                    <Square className="h-4 w-4 mr-1" />
+                    Stop
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => onEdit(strategy)}
+                  disabled={!canEdit(strategy)}
                   title="Edit strategy"
                 >
                   <Edit className="h-4 w-4" />
@@ -85,6 +126,7 @@ export function StrategyList({ strategies, onEdit, onDelete }: StrategyListProps
                   size="sm"
                   variant="ghost"
                   onClick={() => onDelete(strategy)}
+                  disabled={!canDelete(strategy)}
                   title="Delete strategy"
                 >
                   <Trash2 className="h-4 w-4 text-red-600" />

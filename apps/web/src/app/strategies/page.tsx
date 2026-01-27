@@ -27,8 +27,13 @@ export default function StrategiesPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isStartModalOpen, setIsStartModalOpen] = useState(false);
+  const [isStopModalOpen, setIsStopModalOpen] = useState(false);
   const [selectedStrategy, setSelectedStrategy] = useState<Strategy | null>(null);
+  const [selectedMode, setSelectedMode] = useState<'PAPER' | 'LIVE'>('PAPER');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const [isStopping, setIsStopping] = useState(false);
 
   useEffect(() => {
     if (!auth.isLoading && !auth.isAuthenticated) {
@@ -159,6 +164,60 @@ export default function StrategiesPage() {
     setIsDeleteModalOpen(true);
   };
 
+  const openStartModal = (strategy: Strategy) => {
+    setSelectedStrategy(strategy);
+    setSelectedMode('PAPER'); // Default to PAPER mode
+    setIsStartModalOpen(true);
+  };
+
+  const openStopModal = (strategy: Strategy) => {
+    setSelectedStrategy(strategy);
+    setIsStopModalOpen(true);
+  };
+
+  const handleStartStrategy = async () => {
+    if (!selectedStrategy) return;
+
+    try {
+      setIsStarting(true);
+      setError(null);
+      await strategyApi.start(selectedStrategy.id, selectedMode);
+      setIsStartModalOpen(false);
+      setSelectedStrategy(null);
+      setSuccessMessage(`Strategy started in ${selectedMode} mode`);
+      await loadStrategies();
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      // Handle kill switch and service unavailable errors
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to start strategy');
+      }
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
+  const handleStopStrategy = async () => {
+    if (!selectedStrategy) return;
+
+    try {
+      setIsStopping(true);
+      setError(null);
+      await strategyApi.stop(selectedStrategy.id);
+      setIsStopModalOpen(false);
+      setSelectedStrategy(null);
+      setSuccessMessage('Strategy stopped successfully');
+      await loadStrategies();
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to stop strategy');
+    } finally {
+      setIsStopping(false);
+    }
+  };
+
   if (auth.isLoading || !auth.isAuthenticated) {
     return <PageLoading />;
   }
@@ -200,6 +259,8 @@ export default function StrategiesPage() {
               strategies={strategies}
               onEdit={openEditModal}
               onDelete={openDeleteModal}
+              onStart={openStartModal}
+              onStop={openStopModal}
             />
           )}
         </CardContent>
@@ -268,6 +329,100 @@ export default function StrategiesPage() {
             </Button>
             <Button variant="destructive" onClick={handleDeleteStrategy} disabled={isDeleting}>
               {isDeleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Start Strategy Modal */}
+      <Modal
+        isOpen={isStartModalOpen}
+        onClose={() => {
+          setIsStartModalOpen(false);
+          setSelectedStrategy(null);
+        }}
+        title="Start Strategy"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-700">
+            Start strategy <span className="font-semibold">{selectedStrategy?.config.name}</span>?
+          </p>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Select Mode</label>
+            <div className="flex gap-4">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="mode"
+                  value="PAPER"
+                  checked={selectedMode === 'PAPER'}
+                  onChange={(e) => setSelectedMode(e.target.value as 'PAPER' | 'LIVE')}
+                  className="mr-2"
+                />
+                <span>PAPER (Simulation)</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="mode"
+                  value="LIVE"
+                  checked={selectedMode === 'LIVE'}
+                  onChange={(e) => setSelectedMode(e.target.value as 'PAPER' | 'LIVE')}
+                  className="mr-2"
+                />
+                <span className="text-orange-600 font-medium">LIVE (Real Trading)</span>
+              </label>
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsStartModalOpen(false);
+                setSelectedStrategy(null);
+              }}
+              disabled={isStarting}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleStartStrategy} disabled={isStarting}>
+              {isStarting ? 'Starting...' : 'Start Strategy'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Stop Strategy Modal */}
+      <Modal
+        isOpen={isStopModalOpen}
+        onClose={() => {
+          setIsStopModalOpen(false);
+          setSelectedStrategy(null);
+        }}
+        title="Stop Strategy"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-700">
+            Are you sure you want to stop{' '}
+            <span className="font-semibold">{selectedStrategy?.config.name}</span>?
+          </p>
+          <p className="text-sm text-gray-600">
+            This will stop all automated trading for this strategy. Any open orders will remain
+            open.
+          </p>
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsStopModalOpen(false);
+                setSelectedStrategy(null);
+              }}
+              disabled={isStopping}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleStopStrategy} disabled={isStopping}>
+              {isStopping ? 'Stopping...' : 'Stop Strategy'}
             </Button>
           </div>
         </div>

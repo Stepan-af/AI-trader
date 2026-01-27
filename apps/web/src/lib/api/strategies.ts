@@ -38,4 +38,22 @@ export const strategyApi = {
   delete: async (id: string): Promise<void> => {
     await api.delete(`/strategies/${id}`);
   },
+
+  /**
+   * Start a strategy
+   * POST /strategies/:id/start
+   */
+  start: async (id: string, mode: 'PAPER' | 'LIVE'): Promise<Strategy> => {
+    const response = await api.post<Strategy>(`/strategies/${id}/start`, { mode });
+    return response.data;
+  },
+
+  /**
+   * Stop a strategy
+   * POST /strategies/:id/stop
+   */
+  stop: async (id: string): Promise<Strategy> => {
+    const response = await api.post<Strategy>(`/strategies/${id}/stop`, {});
+    return response.data;
+  },
 };
