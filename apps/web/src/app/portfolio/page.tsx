@@ -52,9 +52,9 @@ export default function PortfolioPage() {
           return {
             ...prev,
             balance: event.balance,
-            unrealizedPnl: event.unrealized_pnl,
-            dataAsOfTimestamp: event.data_as_of_timestamp,
-            isStale: event.is_stale,
+            unrealized_pnl: event.unrealized_pnl,
+            data_as_of_timestamp: event.data_as_of_timestamp,
+            is_stale: event.is_stale,
           };
         });
       }
