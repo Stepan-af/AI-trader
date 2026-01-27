@@ -1,8 +1,8 @@
 // Portfolio types - extends shared domain types with API-specific fields
 
-import type { Position, PnLSnapshot } from '@ai-trader/shared';
+import type { PnLSnapshot, Position } from '@ai-trader/shared';
 
-export type { Position, PnLSnapshot };
+export type { PnLSnapshot, Position };
 
 // API response types
 export interface PortfolioOverview {

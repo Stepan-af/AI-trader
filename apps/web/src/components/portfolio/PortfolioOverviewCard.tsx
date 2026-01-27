@@ -1,9 +1,8 @@
 'use client';
 
-import React from 'react';
-import { AlertTriangle } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import type { PortfolioOverview } from '@/types/portfolio';
+import { AlertTriangle } from 'lucide-react';
 
 interface PortfolioOverviewCardProps {
   overview: PortfolioOverview;

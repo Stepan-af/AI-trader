@@ -1,17 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
-import { RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Alert } from '@/components/ui/Alert';
-import { PageLoading } from '@/components/ui/LoadingSpinner';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { PortfolioOverviewCard } from '@/components/portfolio/PortfolioOverviewCard';
 import { PositionsTable } from '@/components/portfolio/PositionsTable';
+import { Alert } from '@/components/ui/Alert';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { PageLoading } from '@/components/ui/LoadingSpinner';
+import { useAuth } from '@/hooks/useAuth';
 import { portfolioApi } from '@/lib/api/portfolio';
 import type { PortfolioOverview, Position } from '@/types/portfolio';
+import { RefreshCw } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 export default function PortfolioPage() {
   const { auth } = useAuth();

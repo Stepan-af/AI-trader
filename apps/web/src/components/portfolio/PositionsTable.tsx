@@ -1,7 +1,13 @@
 'use client';
 
-import React from 'react';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/Table';
 import type { Position } from '@/types/portfolio';
 
 interface PositionsTableProps {
@@ -40,7 +46,9 @@ export function PositionsTable({ positions }: PositionsTableProps) {
         {positions.map((position) => (
           <TableRow key={position.id}>
             <TableCell className="font-medium">{position.symbol}</TableCell>
-            <TableCell className="text-right font-mono">{formatQuantity(position.quantity)}</TableCell>
+            <TableCell className="text-right font-mono">
+              {formatQuantity(position.quantity)}
+            </TableCell>
             <TableCell className="text-right font-mono">
               {formatCurrency(position.avgEntryPrice)}
             </TableCell>
@@ -51,7 +59,9 @@ export function PositionsTable({ positions }: PositionsTableProps) {
             >
               {formatCurrency(position.realizedPnl)}
             </TableCell>
-            <TableCell className="text-right font-mono">{formatCurrency(position.totalFees)}</TableCell>
+            <TableCell className="text-right font-mono">
+              {formatCurrency(position.totalFees)}
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>

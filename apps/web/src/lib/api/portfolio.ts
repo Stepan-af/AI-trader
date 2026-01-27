@@ -1,7 +1,7 @@
 // Portfolio API client
 
-import api from '../api';
 import type { PortfolioOverview, PortfolioPositionsResponse } from '@/types/portfolio';
+import api from '../api';
 
 export const portfolioApi = {
   /**
