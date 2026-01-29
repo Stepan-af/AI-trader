@@ -10,7 +10,7 @@ Web platform for automated and semi-automated trading with backtesting capabilit
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20+ (monorepo builds require Node 20 and npm 10+)
 - Docker and Docker Compose
 - Git
 
@@ -66,10 +66,23 @@ Found 5 migration files
 ✓ Successfully executed 5 migrations
 ```
 
-### 5. Start Backend
+### 5. Start Backend (Development)
+
+For a development run (build then start the backend):
 
 ```bash
-npm run dev
+cd apps/backend
+npm run start:dev
+```
+
+Note: `start:dev` builds the TypeScript into `dist/` and starts the Node process.
+If you want file-watch/auto-restart you may run a separate TypeScript watcher:
+
+```bash
+# In one terminal: compile on change
+cd apps/backend && npm run dev
+# In another terminal: start the built server
+cd apps/backend && npm run start:dev
 ```
 
 Backend will start on `http://localhost:3000`.
@@ -241,3 +254,137 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for architectural principles.
 ## License
 
 Proprietary
+
+**Debug / Development Run**
+
+- Prerequisites: Docker, Docker Compose, Node 20+, npm 10+ installed.
+- Recommended: use a clean shell and a fresh clone.
+
+1. Install dependencies (root workspace):
+
+```bash
+cd /path/to/AI-trader
+npm ci
+```
+
+2. Copy env and edit secrets (local dev):
+
+```bash
+cp .env.example .env
+# Edit .env and set JWT_SECRET (use openssl rand -hex 32)
+```
+
+3. Start infra (Postgres + Redis) with Docker Compose:
+
+```bash
+docker-compose down -v --remove-orphans
+docker-compose up --build -d postgres redis
+docker-compose ps
+```
+
+4. Run DB migrations from the host (requires `DATABASE_URL` in `.env`):
+
+```bash
+npm run migrate
+# or
+node scripts/run-migrations.js
+```
+
+5. Start Backend (development):
+
+```bash
+# Option A (recommended): build and run backend Node process
+cd apps/backend
+npm run start:dev
+
+# Option B (watch compile + run):
+# In terminal A: compile on changes
+cd apps/backend && npm run dev
+# In terminal B: run built server
+cd apps/backend && npm run start:dev
+```
+
+Backend API: http://localhost:3000 (API base: http://localhost:3000/api/v1)
+
+6. Start Frontend (development):
+
+```bash
+cd apps/web
+npm run dev
+```
+
+Frontend: http://localhost:3001
+
+7. Verify health endpoints and connectivity:
+
+```bash
+curl http://localhost:3000/api/v1/health
+# Open http://localhost:3001 in browser
+```
+
+Useful debug tips:
+
+- View logs: `docker-compose logs -f` and backend logs in terminal.
+- If migrations fail, ensure `DATABASE_URL` points to docker Postgres: `postgresql://postgres:postgres@localhost:5432/ai_trader`.
+- To reset DB: `docker-compose down -v` then `docker-compose up -d postgres` then rerun migrations.
+
+**User / Demo Run**
+
+This is the simplest way to run the MVP locally for a demo user (no code changes):
+
+1. Start infra and services with Docker Compose (all services):
+
+```bash
+docker-compose down -v --remove-orphans
+docker-compose up --build -d
+```
+
+2. Apply migrations (host or container):
+
+```bash
+npm run migrate
+# or run inside the backend container:
+docker-compose exec backend node scripts/run-migrations.js
+```
+
+3. Access the application:
+
+- Frontend UI: http://localhost:3001
+- Backend API: http://localhost:3000/api/v1
+
+4. Demo user / accounts:
+
+- The MVP supports local registration via the frontend. Use the UI to register a demo user.
+- Alternatively, create a user via API: `POST http://localhost:3000/api/v1/auth/register` with JSON `{ "email": "demo@example.com", "password": "password" }`.
+
+5. Supported demo flows (MVP happy path):
+
+- Login
+- Create a strategy (DCA/Grid/Swing) via UI
+- Run backtest and view results in UI
+- Place PAPER orders or start strategy in PAPER mode
+- View orders/fills and portfolio positions/pnl
+
+Limitations and notes:
+
+- LIVE trading adapters are not connected by default — use PAPER mode.
+- Some background workers (reconciliation, event processing) may be incomplete in the MVP — see Known Limitations.
+
+Reset local state:
+
+```bash
+# Stop everything and remove volumes
+docker-compose down -v --remove-orphans
+# Start infra and re-run migrations
+docker-compose up -d postgres redis
+npm run migrate
+```
+
+Ports / URLs:
+
+- Backend API: http://localhost:3000
+- Frontend: http://localhost:3001
+- Postgres: localhost:5432
+- Redis: localhost:6379
+
+Security: never commit real secrets. Use `.env.example` and set values in your local `.env`.
